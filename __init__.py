@@ -73,10 +73,6 @@ class SpotifySkill(MycroftSkill):
         .require('PlaylistKeyword')\
         .build())
     def play_playlist(self, message):
-        if not self.timer:
-            self.clear_display()
-            self.timer = Timer(3, self._update_notes)
-            self.timer.start()
         p = message.data.get('PlaylistKeyword')
         device = self.spotify.get_devices()
         if device and len(device) > 0:
@@ -86,6 +82,15 @@ class SpotifySkill(MycroftSkill):
             time.sleep(2)
             self.spotify.play(dev_id, self.playlists[p])
 
+    def display_notes(self):
+        """
+            Start timer thread displaying notes on the display
+        """
+        if not self.timer:
+            self.clear_display()
+            self.timer = Timer(3, self._update_notes)
+            self.timer.start()
+
     def clear_display(self):
         #  clear screen
         self.enclosure.mouth_display(img_code="HIAAAAAAAAAAAAAA",
@@ -93,7 +98,7 @@ class SpotifySkill(MycroftSkill):
         self.enclosure.mouth_display(img_code="HIAAAAAAAAAAAAAA",
                                      x=24, refresh=False)
 
-    def display_notes(self, index):
+    def draw_notes(self, index):
         notes = [['IIAEAOOHGAGEGOOHAA', 'IIAAACAHPDDADCDHPD'],
                  ['IIAAACAHPDDADCDHPD', 'IIAEAOOHGAGEGOOHAA']]
 
@@ -104,9 +109,13 @@ class SpotifySkill(MycroftSkill):
                                          refresh=False)
 
     def _update_notes(self):
-        self.display_notes(self.index)
-        self.index = ((self.index + 1) % 2)
-        self.timer = Timer(3, self._update_notes)
+        """
+            Timer function updating the display
+        """
+        if self._should_display_notes():
+            self.draw_notes(self.index)
+            self.index = ((self.index + 1) % 2)
+        self.timer = Timer(3, self._draw_notes)
         self.timer.start()
 
     def stop(self):
