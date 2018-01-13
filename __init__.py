@@ -1,34 +1,21 @@
-import sys
-from os.path import dirname, abspath, basename
 import time
-from threading import Timer
+import datetime
 
-from mycroft.version import CORE_VERSION_MAJOR, \
-     CORE_VERSION_MINOR, CORE_VERSION_BUILD
 from mycroft.skills.core import MycroftSkill, intent_handler
-from mycroft.util.log import getLogger
+from mycroft.util.log import LOG
 from adapt.intent import IntentBuilder
 
-from spotipy import Spotify
+import mycroft.client.enclosure.display_manager as DisplayManager
 
-compatible_core_version_sum = 27
+import spotipy
 
-sum_of_core = CORE_VERSION_MAJOR + CORE_VERSION_MINOR + CORE_VERSION_BUILD
-if sum_of_core >= compatible_core_version_sum:
-    import mycroft.client.enclosure.display_manager as DisplayManager
+from mycroft.api import DeviceApi
+from requests import HTTPError
 
-
-sys.path.append(abspath(dirname(__file__)))
-auth = __import__('auth')
-
-logger = getLogger(abspath(__file__).split('/')[-2])
-
-
-class SpotifyConnect(Spotify):
+class SpotifyConnect(spotipy.Spotify):
     def get_devices(self):
-        print "getting devices!"
+        LOG.debug('getting devices')
         return self._get('me/player/devices')
-
 
     def play(self, device, playlist):
         tracks = self.user_playlist_tracks(playlist['owner']['id'],
@@ -46,22 +33,55 @@ class SpotifyConnect(Spotify):
             Parameters:
                 - device_id - device target for playback
         """
-        print 'Pausing spotify playback'
+        LOG.info('Pausing spotify playback')
         try:
             self._put('me/player/pause?device_id={}'.format(device))
         except Exception as e:
-            print e
+            LOG.error(e)
 
 
 class SpotifySkill(MycroftSkill):
-    def initialize(self):
+    def __init__(self):
+        super(SpotifySkill, self).__init__()
         self.index = 0
-        self.timer = None
-        self.tok = auth.prompt_for_user_token(self.settings['username'],
-                                              auth.scope,
-                                              cache_dir=dirname(__file__))
-        self.spotify = SpotifyConnect(auth=self.tok)
+        self.spotify = None
+        self.spoken_goto_home = False
 
+    def initialize(self):
+        self.schedule_repeating_event(self.load_credentials,
+                                      datetime.datetime.now(), 60,
+                                      name='get_creds')
+
+
+    def load_credentials(self):
+        """ Repeating function trying to retrieve credentials from the
+            backend.
+
+            When credentials are found the skill connects
+        """
+        try:
+            token = DeviceApi().get_oauth_token(1)
+            self.spotify = SpotifyConnect(auth=token['access_token'])
+        except HTTPError:
+            pass
+
+        if self.spotify:
+            # Spotfy connection worked, cancel recurring event and
+            # prepare for usage
+            # If not able to authorize, the method will be repeated after 60
+            # seconds
+            self.cancel_scheduled_event('get_creds')
+            self.get_playlists()
+        elif not self.spoken_goto_home:
+            # First time loading the skill speak a request to go to home
+            # to authorize
+            self.speak_dialog('authorize')
+            self.spoken_goto_home = True
+
+    def get_playlists(self):
+        """
+            Fetch user's playlists.
+        """
         self.playlists = {}
         playlists = self.spotify.current_user_playlists().get('items', [])
         for p in playlists:
@@ -73,32 +93,46 @@ class SpotifySkill(MycroftSkill):
         .require('PlaylistKeyword')\
         .build())
     def play_playlist(self, message):
+        """
+            Play user playlist.
+        """
+        if self.spotify is None:
+            self.speak('Not authorized')
+            return
+
         p = message.data.get('PlaylistKeyword')
         device = self.spotify.get_devices()
         if device and len(device) > 0:
             dev_id = device['devices'][0]['id']
-            print device, dev_id
+            LOG.debug(dev_id)
             self.speak_dialog('listening_to', data={'tracks': p})
             time.sleep(2)
             self.spotify.play(dev_id, self.playlists[p])
+            #self.show_notes()
+
+    def show_notes(self):
+        """ show notes, HA HA """
+        self.schedule_repeating_event(self._update_notes,
+                                      datetime.datetime.now(), 2,
+                                      name='dancing_notes')
 
     def display_notes(self):
         """
-            Start timer thread displaying notes on the display
+            Start timer thread displaying notes on the display.
         """
-        if not self.timer:
-            self.clear_display()
-            self.timer = Timer(3, self._update_notes)
-            self.timer.start()
+        pass
 
     def clear_display(self):
-        #  clear screen
+        """ Clear display. """
+
         self.enclosure.mouth_display(img_code="HIAAAAAAAAAAAAAA",
                                      refresh=False)
         self.enclosure.mouth_display(img_code="HIAAAAAAAAAAAAAA",
                                      x=24, refresh=False)
 
     def draw_notes(self, index):
+        """ Draw notes on display. """
+
         notes = [['IIAEAOOHGAGEGOOHAA', 'IIAAACAHPDDADCDHPD'],
                  ['IIAAACAHPDDADCDHPD', 'IIAEAOOHGAGEGOOHAA']]
 
@@ -110,23 +144,17 @@ class SpotifySkill(MycroftSkill):
 
     def _update_notes(self):
         """
-            Timer function updating the display
+            Repeating event updating the display.
         """
         if self._should_display_notes():
             self.draw_notes(self.index)
             self.index = ((self.index + 1) % 2)
-        self.timer = Timer(3, self._draw_notes)
-        self.timer.start()
 
     def stop(self):
-        print "stopping spotify"
-        if self.timer:
-            self.timer.cancel()
-            self.timer = None
+        #self.remove_event('dancing_notes')
 
         self.enclosure.reset()
         device = self.spotify.get_devices()
-        print device
         if device:
             self.enclosure.reset()
             dev_id = device['devices'][0]['id']
