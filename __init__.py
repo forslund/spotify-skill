@@ -1,7 +1,8 @@
 import time
 import datetime
 
-from mycroft.skills.core import MycroftSkill, intent_handler
+from mycroft.skills.core import MycroftSkill, intent_handler, \
+                                intent_file_handler
 from mycroft.util.log import LOG
 from adapt.intent import IntentBuilder
 
@@ -13,6 +14,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 from mycroft.api import DeviceApi
 from requests import HTTPError
 
+from fuzzywuzzy.process import extractOne
 
 def get_token(dev_cred):
     retry = False
@@ -117,13 +119,8 @@ class SpotifySkill(MycroftSkill):
         playlists = self.spotify.current_user_playlists().get('items', [])
         for p in playlists:
             self.playlists[p['name']] = p
-            self.register_vocabulary(p['name'], 'PlaylistKeyword')
 
-    @intent_handler(IntentBuilder('PlayPlaylistIntent')\
-        .require('PlayKeyword')\
-        .require('PlaylistKeyword')\
-        .build())
-
+    @intent_file_handler('Play.intent')
     def play_playlist(self, message):
         """
             Play user playlist.
@@ -131,8 +128,15 @@ class SpotifySkill(MycroftSkill):
         if self.spotify is None:
             self.speak('Not authorized')
             return
+        print message.data
+        key, confidence = extractOne(message.data.get('playlist'),
+                                     self.playlists.keys())
+        if confidence > 50:
+            p = key
+        else:
+            LOG.info('couldn\'t find {}'.format(message.data.get('playlist')))
+            return
 
-        p = message.data.get('PlaylistKeyword')
         device = self.spotify.get_devices()
         if device and len(device) > 0:
             dev_id = device[0]['id']

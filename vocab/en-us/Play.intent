@@ -1,0 +1,3 @@
+play {playlist}
+play playlist {playlist}
+play the playlist {playlist}
