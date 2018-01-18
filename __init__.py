@@ -46,7 +46,8 @@ class MycroftSpotifyCredentials(SpotifyClientCredentials):
 class SpotifyConnect(spotipy.Spotify):
     def get_devices(self):
         LOG.debug('getting devices')
-        return self._get('me/player/devices')
+        devices = self._get('me/player/devices')['devices']
+        return devices
 
     def play(self, device, playlist):
         tracks = self.user_playlist_tracks(playlist['owner']['id'],
@@ -56,7 +57,6 @@ class SpotifyConnect(spotipy.Spotify):
         data['uris'] = uris
         path = 'me/player/play?device_id={}'.format(device)
         self._put(path, payload=data)
-
 
     def pause(self, device):
         """ Pause user's playback.
@@ -85,7 +85,7 @@ class SpotifySkill(MycroftSkill):
 
 
     def load_credentials(self):
-        """ Repeating function trying to retrieve credentials from the
+        """ Repeating method trying to retrieve credentials from the
             backend.
 
             When credentials are found the skill connects
@@ -123,6 +123,7 @@ class SpotifySkill(MycroftSkill):
         .require('PlayKeyword')\
         .require('PlaylistKeyword')\
         .build())
+
     def play_playlist(self, message):
         """
             Play user playlist.
@@ -134,12 +135,14 @@ class SpotifySkill(MycroftSkill):
         p = message.data.get('PlaylistKeyword')
         device = self.spotify.get_devices()
         if device and len(device) > 0:
-            dev_id = device['devices'][0]['id']
+            dev_id = device[0]['id']
             LOG.debug(dev_id)
             self.speak_dialog('listening_to', data={'tracks': p})
             time.sleep(2)
             self.spotify.play(dev_id, self.playlists[p])
             #self.show_notes()
+        else:
+            LOG.info('No spotify devices found')
 
     def show_notes(self):
         """ show notes, HA HA """
@@ -185,11 +188,12 @@ class SpotifySkill(MycroftSkill):
         #self.remove_event('dancing_notes')
 
         self.enclosure.reset()
-        device = self.spotify.get_devices()
-        if device:
-            self.enclosure.reset()
-            dev_id = device['devices'][0]['id']
-            self.spotify.pause(dev_id)
+        if self.spotify:
+            device = self.spotify.get_devices()
+            if device and len(device) > 0:
+                self.enclosure.reset()
+                dev_id = device[0]['id']
+                self.spotify.pause(dev_id)
 
     def _should_display_notes(self):
         _get_active = DisplayManager.get_active
