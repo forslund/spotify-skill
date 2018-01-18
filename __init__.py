@@ -8,9 +8,40 @@ from adapt.intent import IntentBuilder
 import mycroft.client.enclosure.display_manager as DisplayManager
 
 import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
 
 from mycroft.api import DeviceApi
 from requests import HTTPError
+
+
+def get_token(dev_cred):
+    retry = False
+    try:
+        d = DeviceApi().get_oauth_token(dev_cred)
+    except HTTPError as e:
+        if e.response.status_code == 404: # Token doesn't exist
+            raise
+        else:
+            retry = True
+    if retry:
+        d = DeviceApi().get_oauth_token(dev_cred)
+    return d
+
+
+class MycroftSpotifyCredentials(SpotifyClientCredentials):
+    def __init__(self, dev_cred):
+        self.dev_cred = dev_cred
+        self.access_token = None
+        self.expiration_time = None
+
+    def get_access_token(self):
+        if not self.access_token or time.time() > self.expiration_time:
+            d = get_token(self.dev_cred)
+            self.access_token = d['access_token']
+            # get expiration time from message, if missing assume 1 hour
+            self.expiration_time = d.get('expiration') or time.time() + 3600
+        return self.access_token
+
 
 class SpotifyConnect(spotipy.Spotify):
     def get_devices(self):
@@ -60,8 +91,8 @@ class SpotifySkill(MycroftSkill):
             When credentials are found the skill connects
         """
         try:
-            token = DeviceApi().get_oauth_token(1)
-            self.spotify = SpotifyConnect(auth=token['access_token'])
+            creds = MycroftSpotifyCredentials(1)
+            self.spotify = SpotifyConnect(client_credentials_manager = creds)
         except HTTPError:
             pass
 
