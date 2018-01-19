@@ -148,6 +148,18 @@ class SpotifySkill(MycroftSkill):
         else:
             LOG.info('No spotify devices found')
 
+    @intent_handler(IntentBuilder('').require('Spotify').require('Device'))
+    def list_devices(self, message):
+        devices = [d['name'] for d in self.spotify.get_devices()]
+        if len(devices) == 1:
+            self.speak(devices[0])
+        elif len(devices) > 1:
+            self.speak_dialog('AvailableDevices')
+            for d in devices[:-1]:
+                self.speak(d)
+            self.speak_dialog('And')
+            self.speak(devices[-1])
+
     def show_notes(self):
         """ show notes, HA HA """
         self.schedule_repeating_event(self._update_notes,
