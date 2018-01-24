@@ -9,6 +9,18 @@
                         "name": "Spotify",
                         "type": "oauth",
                         "value": 1
+                    },
+                    {
+                        "name": "user",
+                        "type": "text",
+                        "label": "Username",
+                        "value": ""
+                    },
+                    {
+                        "name": "password",
+                        "type": "password",
+                        "label": "Password",
+                        "value": ""
                     }
                 ]
             }
