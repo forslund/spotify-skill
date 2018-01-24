@@ -8,6 +8,8 @@ from adapt.intent import IntentBuilder
 
 import mycroft.client.enclosure.display_manager as DisplayManager
 
+from subprocess import Popen
+
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
@@ -79,6 +81,16 @@ class SpotifySkill(MycroftSkill):
         self.index = 0
         self.spotify = None
         self.spoken_goto_home = False
+        self.process = None
+        self.launch_librespot()
+
+    def launch_librespot(self):
+        path = self.settings.get('librespot_path', 'librespot')
+
+        if 'user' in self.settings and 'password' in self.settings:
+            self.process = Popen([path, '-n', 'Spotify Skill',
+                                  '-u', self.settings['user'],
+                                  '-p', self.settings['password'])
 
     def initialize(self):
         self.schedule_repeating_event(self.load_credentials,
@@ -128,6 +140,8 @@ class SpotifySkill(MycroftSkill):
         if self.spotify is None:
             self.speak('Not authorized')
             return
+        if not self.process:
+            self.launch_librespot()
         print message.data
         key, confidence = extractOne(message.data.get('playlist'),
                                      self.playlists.keys())
