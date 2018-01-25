@@ -82,15 +82,20 @@ class SpotifySkill(MycroftSkill):
         self.spotify = None
         self.spoken_goto_home = False
         self.process = None
+        self.device_name = DeviceApi().get().get('name')
         self.launch_librespot()
 
     def launch_librespot(self):
-        path = self.settings.get('librespot_path', 'librespot')
+        platform = self.config_core.get("enclosure").get("platform", "unknown")
+        path = self.settings.get('librespot_path', None)
+        if platform == 'mycroft_mark_1' and not path:
+            path = 'librespot'
 
-        if 'user' in self.settings and 'password' in self.settings:
-            self.process = Popen([path, '-n', 'Spotify Skill',
+        if path and 'user' in self.settings and 'password' in self.settings:
+            self.process = Popen([path, '-n', self.device_name,
                                   '-u', self.settings['user'],
-                                  '-p', self.settings['password'])
+                                  '-p', self.settings['password']])
+            time.sleep(2)
 
     def initialize(self):
         self.schedule_repeating_event(self.load_credentials,
@@ -153,7 +158,12 @@ class SpotifySkill(MycroftSkill):
 
         device = self.spotify.get_devices()
         if device and len(device) > 0:
-            dev_id = device[0]['id']
+            for d in device:
+                if d['name'] == self.device_name:
+                    dev_id = d['id']
+                    break
+            else:
+                dev_id = device[0]['id']
             LOG.debug(dev_id)
             self.speak_dialog('listening_to', data={'tracks': p})
             time.sleep(2)
