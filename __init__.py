@@ -53,12 +53,13 @@ class SpotifyConnect(spotipy.Spotify):
         devices = self._get('me/player/devices')['devices']
         return devices
 
-    def play(self, device, playlist):
-        tracks = self.user_playlist_tracks(playlist['owner']['id'],
-                                           playlist['id'])
-        uris = [t['track']['uri'] for t in tracks['items']]
+    def play(self, device, playlist=None):
         data = {}
-        data['uris'] = uris
+        if playlist:
+            tracks = self.user_playlist_tracks(playlist['owner']['id'],
+                                               playlist['id'])
+            uris = [t['track']['uri'] for t in tracks['items']]
+            data['uris'] = uris
         path = 'me/player/play?device_id={}'.format(device)
         self._put(path, payload=data)
 
@@ -74,6 +75,30 @@ class SpotifyConnect(spotipy.Spotify):
         except Exception as e:
             LOG.error(e)
 
+    def next(self, device):
+        """ Pause user's playback.
+
+            Parameters:
+                - device_id - device target for playback
+        """
+        LOG.info('Pausing spotify playback')
+        try:
+            self._post('me/player/next?device_id={}'.format(device))
+        except Exception as e:
+            LOG.error(e)
+
+    def prev(self, device):
+        """ Pause user's playback.
+
+            Parameters:
+                - device_id - device target for playback
+        """
+        LOG.info('Pausing spotify playback')
+        try:
+            self._post('me/player/previous?device_id={}'.format(device))
+        except Exception as e:
+            LOG.error(e)
+
 
 class SpotifySkill(MycroftSkill):
     def __init__(self):
@@ -83,6 +108,7 @@ class SpotifySkill(MycroftSkill):
         self.spoken_goto_home = False
         self.process = None
         self.device_name = DeviceApi().get().get('name')
+        self.dev_id = None
         self.launch_librespot()
 
     def launch_librespot(self):
@@ -98,10 +124,14 @@ class SpotifySkill(MycroftSkill):
             time.sleep(2)
 
     def initialize(self):
+        self.add_event('mycroft.audio.service.next', self.next_track)
+        self.add_event('mycroft.audio.service.prev', self.prev_track)
+        self.add_event('mycroft.audio.service.pause', self.pause)
+        self.add_event('mycroft.audio.service.resume', self.resume)
+
         self.schedule_repeating_event(self.load_credentials,
                                       datetime.datetime.now(), 60,
                                       name='get_creds')
-
 
     def load_credentials(self):
         """ Repeating method trying to retrieve credentials from the
@@ -168,9 +198,42 @@ class SpotifySkill(MycroftSkill):
             self.speak_dialog('listening_to', data={'tracks': p})
             time.sleep(2)
             self.spotify.play(dev_id, self.playlists[p])
+            self.dev_id = dev_id
             #self.show_notes()
         else:
             LOG.info('No spotify devices found')
+
+    def pause(self, message):
+        """
+            Handler for playback control pause
+        """
+        LOG.info('Pause Spotify')
+        if self.spotify and self.dev_id:
+            self.spotify.pause(self.dev_id)
+
+    def resume(self, message):
+        """
+            Handler for playback control resume
+        """
+        LOG.info('Resume Spotify')
+        if self.spotify and self.dev_id:
+            self.spotify.play(self.dev_id)
+
+    def next_track(self, message):
+        """
+            Handler for playback control next
+        """
+        LOG.info('Next Spotify track')
+        if self.spotify and self.dev_id:
+            self.spotify.next(self.dev_id)
+
+    def prev_track(self, message):
+        """
+            Handler for playback control prev
+        """
+        LOG.info('Previous Spotify track')
+        if self.spotify and self.dev_id:
+            self.spotify.prev(self.dev_id)
 
     @intent_handler(IntentBuilder('').require('Spotify').require('Device'))
     def list_devices(self, message):
@@ -226,14 +289,8 @@ class SpotifySkill(MycroftSkill):
 
     def stop(self):
         #self.remove_event('dancing_notes')
-
         self.enclosure.reset()
-        if self.spotify:
-            device = self.spotify.get_devices()
-            if device and len(device) > 0:
-                self.enclosure.reset()
-                dev_id = device[0]['id']
-                self.spotify.pause(dev_id)
+        self.pause(None)
 
     def _should_display_notes(self):
         _get_active = DisplayManager.get_active
