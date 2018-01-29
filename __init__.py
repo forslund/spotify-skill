@@ -167,41 +167,77 @@ class SpotifySkill(MycroftSkill):
         for p in playlists:
             self.playlists[p['name']] = p
 
+    def get_device(self, name):
+        """
+            Get best device matching the provided name.
+        """
+        # Check that there is a spotify connection
+        if self.spotify is None:
+            self.speak('Not authorized')
+            return
+
+        device = self.spotify.get_devices()
+        if device and len(device) > 0:
+            devices = {d['name']: d for d in device}
+            key, confidence = extractOne(name, devices.keys())
+            if confidence > 0.5:
+                dev = devices[key]
+            else:
+                dev = device[0]
+        return dev
+
+    def get_best_playlist(self, playlist):
+        """
+            Get best playlist matching the desired playlist name
+        """
+        key, confidence = extractOne(playlist, self.playlists.keys())
+        if confidence > 50:
+            return key
+        else:
+            return None
+
     @intent_file_handler('Play.intent')
     def play_playlist(self, message):
         """
-            Play user playlist.
+            Play user playlist on default device.
         """
         if self.spotify is None:
             self.speak('Not authorized')
             return
         if not self.process:
             self.launch_librespot()
-        print message.data
-        key, confidence = extractOne(message.data.get('playlist'),
-                                     self.playlists.keys())
-        if confidence > 50:
-            p = key
-        else:
-            LOG.info('couldn\'t find {}'.format(message.data.get('playlist')))
-            return
 
-        device = self.spotify.get_devices()
-        if device and len(device) > 0:
-            for d in device:
-                if d['name'] == self.device_name:
-                    dev_id = d['id']
-                    break
-            else:
-                dev_id = device[0]['id']
-            LOG.debug(dev_id)
-            self.speak_dialog('listening_to', data={'tracks': p})
+        playlist = self.get_best_playlist(message.data.get('playlist'))
+        dev = self.get_device(self.device_name)
+        self.start_playback(dev, playlist)
+
+    def start_playback(self, dev, playlist):
+        LOG.info('playing {} using {}'.format(playlist, dev['name']))
+        if dev and playlist:
+            self.speak_dialog('listening_to', data={'tracks': playlist})
             time.sleep(2)
-            self.spotify.play(dev_id, self.playlists[p])
-            self.dev_id = dev_id
+            self.spotify.play(dev['id'], self.playlists[playlist])
+            self.dev_id = dev['id']
             #self.show_notes()
+        elif not playlist:
+            LOG.info('couldn\'t find {}'.format(playlist))
         else:
             LOG.info('No spotify devices found')
+
+    @intent_file_handler('PlayOn.intent')
+    def play_playlist_on(self, message):
+        """
+            Play playlist on specific device.
+        """
+        if self.spotify is None:
+            self.speak('Not authorized')
+            return
+        if not self.process:
+            self.launch_librespot()
+        device = message.data.get('device')
+        playlist = self.get_best_playlist(message.data.get('playlist'))
+        dev = self.get_device(message.data.get('device'))
+        self.start_playback(dev, playlist)
 
     def pause(self, message):
         """
