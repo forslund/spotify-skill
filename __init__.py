@@ -53,13 +53,16 @@ class SpotifyConnect(spotipy.Spotify):
         devices = self._get('me/player/devices')['devices']
         return devices
 
-    def play(self, device, playlist=None):
+    def play(self, device, playlist=None, album=None):
         data = {}
         if playlist:
             tracks = self.user_playlist_tracks(playlist['owner']['id'],
                                                playlist['id'])
             uris = [t['track']['uri'] for t in tracks['items']]
-            data['uris'] = uris
+        elif album:
+            tracks = self.album_tracks(album['id'])
+            uris =[t['uri'] for t in tracks['items']]
+        data['uris'] = uris
         path = 'me/player/play?device_id={}'.format(device)
         self._put(path, payload=data)
 
@@ -256,6 +259,24 @@ class SpotifySkill(MycroftSkill):
         playlist = self.get_best_playlist(message.data.get('playlist'))
         dev = self.get_device(message.data.get('device'))
         self.start_playback(dev, playlist)
+
+    @intent_file_handler('SearchAlbum.intent')
+    def search_album(self, message):
+        if self.spotify is None:
+            self.speak('Not authorized')
+            return
+        if not self.process:
+            self.launch_librespot()
+        dev = self.get_device(self.device_name)
+        result = self.spotify.search(message.data['title'], type='album')
+        if len(result['albums']['items']) > 0 and dev:
+            album = result['albums']['items'][0]
+            self.speak_dialog('listening_to',
+                              data={'tracks': album['name']})
+            time.sleep(2)
+            self.spotify.play(dev['id'], album=album)
+            self.dev_id = dev['id']
+            #self.show_notes()
 
     def pause(self, message):
         """

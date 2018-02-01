@@ -16,6 +16,7 @@ On the Mark-1 the skill will start up *librespot* if the user and password is en
 ## Examples 
 * "what spotify devices are available"
 * "play they might be giants"
+* "search spotify for *hello nasty*"
 * "next track"
 * "pause"
 
