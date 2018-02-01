@@ -99,6 +99,21 @@ class SpotifyConnect(spotipy.Spotify):
         except Exception as e:
             LOG.error(e)
 
+    def volume(self, device, volume):
+        """
+            Set volume of device:
+
+            Parameters:
+                device: device id
+                volume: volume in percent
+        """
+        uri = 'me/player/volume?volume_percent={}&device_id={}'.format(volume,
+                                                                       device)
+        try:
+            self._put(uri)
+        except Exception as e:
+            LOG.error(e)
+
 
 class SpotifySkill(MycroftSkill):
     def __init__(self):
@@ -122,6 +137,9 @@ class SpotifySkill(MycroftSkill):
                                   '-u', self.settings['user'],
                                   '-p', self.settings['password']])
             time.sleep(2)
+            # Lower the volume since max volume sounds terrible on the Mark-1
+            dev = self.get_device(self.device_name)
+            self.spotify.volume(dev['id'], 30)
 
     def initialize(self):
         self.add_event('mycroft.audio.service.next', self.next_track)
