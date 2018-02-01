@@ -155,7 +155,7 @@ class SpotifySkill(MycroftSkill):
         elif not self.spoken_goto_home:
             # First time loading the skill speak a request to go to home
             # to authorize
-            self.speak_dialog('authorize')
+            self.speak_dialog('Authorize')
             self.spoken_goto_home = True
 
     def get_playlists(self):
@@ -273,15 +273,20 @@ class SpotifySkill(MycroftSkill):
 
     @intent_handler(IntentBuilder('').require('Spotify').require('Device'))
     def list_devices(self, message):
-        devices = [d['name'] for d in self.spotify.get_devices()]
-        if len(devices) == 1:
-            self.speak(devices[0])
-        elif len(devices) > 1:
-            self.speak_dialog('AvailableDevices')
-            for d in devices[:-1]:
-                self.speak(d)
-            self.speak_dialog('And')
-            self.speak(devices[-1])
+        if self.spotify:
+            devices = [d['name'] for d in self.spotify.get_devices()]
+            if len(devices) == 1:
+                self.speak(devices[0])
+            elif len(devices) > 1:
+                self.speak_dialog('AvailableDevices')
+                for d in devices[:-1]:
+                    self.speak(d)
+                self.speak_dialog('And')
+                self.speak(devices[-1])
+            else:
+                self.speak_dialog('NoDevicesAvailable')
+        else:
+            self.speak_dialog('NotAuthorized')
 
     def show_notes(self):
         """ show notes, HA HA """
