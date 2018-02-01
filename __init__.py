@@ -333,6 +333,9 @@ class SpotifySkill(MycroftSkill):
         self.enclosure.reset()
         self.pause(None)
 
+        # Clear playing device id
+        self.dev_id = None
+
     def _should_display_notes(self):
         _get_active = DisplayManager.get_active
         if _get_active() == '' or _get_active() == self.name:
