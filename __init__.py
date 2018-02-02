@@ -123,7 +123,6 @@ class SpotifySkill(MycroftSkill):
         self.process = None
         self.device_name = DeviceApi().get().get('name')
         self.dev_id = None
-        self.launch_librespot()
 
     def launch_librespot(self):
         platform = self.config_core.get("enclosure").get("platform", "unknown")
@@ -169,6 +168,7 @@ class SpotifySkill(MycroftSkill):
             # seconds
             self.cancel_scheduled_event('get_creds')
             self.get_playlists()
+            self.launch_librespot()
         elif not self.spoken_goto_home:
             # First time loading the skill speak a request to go to home
             # to authorize
