@@ -53,16 +53,12 @@ class SpotifyConnect(spotipy.Spotify):
         devices = self._get('me/player/devices')['devices']
         return devices
 
-    def play(self, device, playlist=None, album=None):
+    def play(self, device, uris=None, context_uri=None):
         data = {}
-        if playlist:
-            tracks = self.user_playlist_tracks(playlist['owner']['id'],
-                                               playlist['id'])
-            uris = [t['track']['uri'] for t in tracks['items']]
-        elif album:
-            tracks = self.album_tracks(album['id'])
-            uris =[t['uri'] for t in tracks['items']]
-        data['uris'] = uris
+        if uris:
+            data['uris'] = uris
+        elif context_uri:
+            data['context_uri'] = context_uri
         path = 'me/player/play?device_id={}'.format(device)
         self._put(path, payload=data)
 
@@ -237,7 +233,11 @@ class SpotifySkill(MycroftSkill):
             LOG.info('playing {} using {}'.format(playlist, dev['name']))
             self.speak_dialog('listening_to', data={'tracks': playlist})
             time.sleep(2)
-            self.spotify.play(dev['id'], self.playlists[playlist])
+            pl = self.playlists[playlist]
+            tracks = self.spotify.user_playlist_tracks(pl['owner']['id'],
+                                                       pl['id'])
+            uris = [t['track']['uri'] for t in tracks['items']]
+            self.spotify.play(dev['id'], uris=uris)
             self.dev_id = dev['id']
             #self.show_notes()
         elif not playlist:
@@ -274,7 +274,8 @@ class SpotifySkill(MycroftSkill):
             self.speak_dialog('listening_to',
                               data={'tracks': album['name']})
             time.sleep(2)
-            self.spotify.play(dev['id'], album=album)
+            LOG.info(album)
+            self.spotify.play(dev['id'], context_uri=album['uri'])
             self.dev_id = dev['id']
             #self.show_notes()
 
