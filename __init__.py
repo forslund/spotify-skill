@@ -205,7 +205,7 @@ class SpotifySkill(MycroftSkill):
                 dev = devices[key]
             else:
                 dev = device[0]
-        return dev
+            return dev
 
     def get_best_playlist(self, playlist):
         """
@@ -233,8 +233,8 @@ class SpotifySkill(MycroftSkill):
         self.start_playback(dev, playlist)
 
     def start_playback(self, dev, playlist):
-        LOG.info('playing {} using {}'.format(playlist, dev['name']))
         if dev and playlist:
+            LOG.info('playing {} using {}'.format(playlist, dev['name']))
             self.speak_dialog('listening_to', data={'tracks': playlist})
             time.sleep(2)
             self.spotify.play(dev['id'], self.playlists[playlist])
