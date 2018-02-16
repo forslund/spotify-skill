@@ -1,3 +1,5 @@
-play {playlist}
 play playlist {playlist}
 play the playlist {playlist}
+play {playlist} on spotify
+play the spotify playlist {playlist}
+play {playlist}

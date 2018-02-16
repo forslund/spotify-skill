@@ -1,0 +1,2 @@
+search.*for (?P<SpotifyTitle>.+)
+search.*for the album (?P<SpotifyTitle>.+)

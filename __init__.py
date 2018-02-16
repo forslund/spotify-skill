@@ -37,6 +37,7 @@ class MycroftSpotifyCredentials(SpotifyClientCredentials):
         self.dev_cred = dev_cred
         self.access_token = None
         self.expiration_time = None
+        self.get_access_token()
 
     def get_access_token(self):
         if not self.access_token or time.time() > self.expiration_time:
@@ -159,8 +160,8 @@ class SpotifySkill(MycroftSkill):
             creds = MycroftSpotifyCredentials(1)
             self.spotify = SpotifyConnect(client_credentials_manager = creds)
         except HTTPError:
-            pass
-
+            LOG.info('Couldn\'t fetch creds')
+        LOG.info(self.spotify)
         if self.spotify:
             # Spotfy connection worked, cancel recurring event and
             # prepare for usage
@@ -228,6 +229,14 @@ class SpotifySkill(MycroftSkill):
         dev = self.get_device(self.device_name)
         self.start_playback(dev, playlist)
 
+    def playback_prerequisits_ok(self):
+        if self.spotify is None:
+            self.speak('Not authorized')
+            return False
+        if not self.process:
+            self.launch_librespot()
+        return True
+
     def start_playback(self, dev, playlist):
         if dev and playlist:
             LOG.info('playing {} using {}'.format(playlist, dev['name']))
@@ -250,34 +259,60 @@ class SpotifySkill(MycroftSkill):
         """
             Play playlist on specific device.
         """
-        if self.spotify is None:
-            self.speak('Not authorized')
-            return
-        if not self.process:
-            self.launch_librespot()
-        device = message.data.get('device')
-        playlist = self.get_best_playlist(message.data.get('playlist'))
-        dev = self.get_device(message.data.get('device'))
-        self.start_playback(dev, playlist)
+        if self.playback_prerequisits_ok():
+            device = message.data.get('device')
+            playlist = self.get_best_playlist(message.data.get('playlist'))
+            dev = self.get_device(message.data.get('device'))
+            self.start_playback(dev, playlist)
 
-    @intent_file_handler('SearchAlbum.intent')
+    @intent_handler(IntentBuilder('').require('Search').require('AlbumTitle') \
+                                     .require('Spotify'))
     def search_album(self, message):
-        if self.spotify is None:
-            self.speak('Not authorized')
-            return
-        if not self.process:
-            self.launch_librespot()
+        if self.playback_prerequisits_ok():
+            return self.search(message.data['AlbumTitle'], 'album')
+
+    @intent_handler(IntentBuilder('').require('Play').require('Artist') \
+                                     .optionally('Spotify'))
+    def search_artist(self, message):
+        if self.playback_prerequisits_ok():
+            return self.search(message.data['Artist'], 'artist')
+
+    def search(self, query, search_type):
         dev = self.get_device(self.device_name)
-        result = self.spotify.search(message.data['title'], type='album')
-        if len(result['albums']['items']) > 0 and dev:
-            album = result['albums']['items'][0]
-            self.speak_dialog('listening_to',
-                              data={'tracks': album['name']})
-            time.sleep(2)
-            LOG.info(album)
-            self.spotify.play(dev['id'], context_uri=album['uri'])
-            self.dev_id = dev['id']
-            #self.show_notes()
+        res = None
+        if search_type == 'album' and len(query.split('by')) > 1:
+            title, artist = query.split('by')
+            result = self.spotify.search(title, type=search_type)
+        else:
+            result = self.spotify.search(query, type=search_type)
+
+        if search_type == 'album': 
+            if len(result['albums']['items']) > 0 and dev:
+                album = result['albums']['items'][0]
+                LOG.info(album)
+                res = album
+        elif search_type == 'artist':
+            LOG.info(result['artists'])
+            artist = result['artists']['items'][0]
+            LOG.info(artist)
+            res = artist
+        else:
+            LOG.info('ERROR')
+            return
+            
+            
+        self.speak_dialog('listening_to',
+                          data={'tracks': res['name']})
+        time.sleep(2)
+        self.spotify.play(dev['id'], context_uri=res['uri'])
+        self.dev_id = dev['id']
+        #self.show_notes()
+
+    @intent_handler(IntentBuilder('').require('Play').require('AlbumTitle') \
+                                  .optionally('Spotify'))
+    def play_album(self, message):
+        if self.playback_prerequisits_ok():
+            return self.search_album(message)
 
     def pause(self, message):
         """
@@ -313,6 +348,7 @@ class SpotifySkill(MycroftSkill):
 
     @intent_handler(IntentBuilder('').require('Spotify').require('Device'))
     def list_devices(self, message):
+        LOG.info(self)
         if self.spotify:
             devices = [d['name'] for d in self.spotify.get_devices()]
             if len(devices) == 1:
