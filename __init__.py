@@ -239,7 +239,7 @@ class SpotifySkill(MycroftSkill):
 
     def start_playback(self, dev, playlist):
         if dev and playlist:
-            LOG.info('playing {} using {}'.format(playlist, dev['name']))
+            LOG.info(u'playing {} using {}'.format(playlist, dev['name']))
             self.speak_dialog('listening_to', data={'tracks': playlist})
             time.sleep(2)
             pl = self.playlists[playlist]
@@ -250,7 +250,7 @@ class SpotifySkill(MycroftSkill):
             self.dev_id = dev['id']
             #self.show_notes()
         elif not playlist:
-            LOG.info('couldn\'t find {}'.format(playlist))
+            LOG.info(u'couldn\'t find {}'.format(playlist))
         else:
             LOG.info('No spotify devices found')
 
