@@ -168,6 +168,7 @@ class SpotifySkill(MycroftSkill):
             # If not able to authorize, the method will be repeated after 60
             # seconds
             self.cancel_scheduled_event('get_creds')
+            self.create_intents()
             self.get_playlists()
             self.launch_librespot()
         elif not self.spoken_goto_home:
@@ -175,6 +176,19 @@ class SpotifySkill(MycroftSkill):
             # to authorize
             self.speak_dialog('Authorize')
             self.spoken_goto_home = True
+
+    def create_intents(self):
+        # play playlists
+        self.register_intent_file('Play.intent', self.play_playlist)
+        self.register_intent_file('PlayOn.intent', self.play_playlist_on)
+        # play album
+        intent = IntentBuilder('').require('Play').require('AlbumTitle') \
+                                  .optionally('Spotify')
+        self.register_intent(intent, self.play_album)
+        # play artist
+        intent = IntentBuilder('').require('Play').require('Artist') \
+                                  .optionally('Spotify')
+        self.register_intent(intent, self.search_artist)
 
     def get_playlists(self):
         """
@@ -214,7 +228,6 @@ class SpotifySkill(MycroftSkill):
         else:
             return None
 
-    @intent_file_handler('Play.intent')
     def play_playlist(self, message):
         """
             Play user playlist on default device.
@@ -254,7 +267,6 @@ class SpotifySkill(MycroftSkill):
         else:
             LOG.info('No spotify devices found')
 
-    @intent_file_handler('PlayOn.intent')
     def play_playlist_on(self, message):
         """
             Play playlist on specific device.
@@ -271,8 +283,6 @@ class SpotifySkill(MycroftSkill):
         if self.playback_prerequisits_ok():
             return self.search(message.data['AlbumTitle'], 'album')
 
-    @intent_handler(IntentBuilder('').require('Play').require('Artist') \
-                                     .optionally('Spotify'))
     def search_artist(self, message):
         if self.playback_prerequisits_ok():
             return self.search(message.data['Artist'], 'artist')
@@ -308,8 +318,6 @@ class SpotifySkill(MycroftSkill):
         self.dev_id = dev['id']
         #self.show_notes()
 
-    @intent_handler(IntentBuilder('').require('Play').require('AlbumTitle') \
-                                  .optionally('Spotify'))
     def play_album(self, message):
         if self.playback_prerequisits_ok():
             return self.search_album(message)
