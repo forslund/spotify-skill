@@ -182,7 +182,7 @@ class SpotifySkill(MycroftSkill):
         # play artist
         intent = IntentBuilder('').require('Play').require('Artist') \
                                   .optionally('Spotify')
-        self.register_intent(intent, self.search_artist)
+        self.register_intent(intent, self.play_artist)
 
     def get_playlists(self):
         """
@@ -277,7 +277,11 @@ class SpotifySkill(MycroftSkill):
         if self.playback_prerequisits_ok():
             return self.search(message.data['AlbumTitle'], 'album')
 
-    def search_artist(self, message):
+    def play_album(self, message):
+        if self.playback_prerequisits_ok():
+            return self.search(message.data['AlbumTitle'], 'album')
+
+    def play_artist(self, message):
         if self.playback_prerequisits_ok():
             return self.search(message.data['Artist'], 'artist')
 
@@ -311,10 +315,6 @@ class SpotifySkill(MycroftSkill):
         self.spotify.play(dev['id'], context_uri=res['uri'])
         self.dev_id = dev['id']
         #self.show_notes()
-
-    def play_album(self, message):
-        if self.playback_prerequisits_ok():
-            return self.search_album(message)
 
     def pause(self, message):
         """
