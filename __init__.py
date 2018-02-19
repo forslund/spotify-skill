@@ -120,7 +120,6 @@ class SpotifySkill(MycroftSkill):
         super(SpotifySkill, self).__init__()
         self.index = 0
         self.spotify = None
-        self.spoken_goto_home = False
         self.process = None
         self.device_name = DeviceApi().get().get('name')
         self.dev_id = None
@@ -171,11 +170,6 @@ class SpotifySkill(MycroftSkill):
             self.create_intents()
             self.get_playlists()
             self.launch_librespot()
-        elif not self.spoken_goto_home:
-            # First time loading the skill speak a request to go to home
-            # to authorize
-            self.speak_dialog('Authorize')
-            self.spoken_goto_home = True
 
     def create_intents(self):
         # play playlists
