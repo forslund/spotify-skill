@@ -226,15 +226,12 @@ class SpotifySkill(MycroftSkill):
         """
             Play user playlist on default device.
         """
-        if self.spotify is None:
-            self.speak('Not authorized')
-            return
-        if not self.process:
-            self.launch_librespot()
-
-        playlist = self.get_best_playlist(message.data.get('playlist'))
-        dev = self.get_device(self.device_name)
-        self.start_playback(dev, playlist)
+        if message.data['utterance'] == 'play spotify':
+            self.continue_current_playlist(message)
+        elif self.playback_prerequisits_ok():
+            playlist = self.get_best_playlist(message.data.get('playlist'))
+            dev = self.get_device(self.device_name)
+            self.start_playback(dev, playlist)
 
     def playback_prerequisits_ok(self):
         if self.spotify is None:
@@ -270,6 +267,16 @@ class SpotifySkill(MycroftSkill):
             playlist = self.get_best_playlist(message.data.get('playlist'))
             dev = self.get_device(message.data.get('device'))
             self.start_playback(dev, playlist)
+
+    @intent_file_handler('PlaySpotify.intent')
+    def continue_current_playlist(self, message):
+        if self.playback_prerequisits_ok():
+            dev = self.get_device(self.device_name)
+            if dev:
+                self.spotify.transfer_playback(dev['id'])
+                self.dev_id = dev['id']
+            else:
+                self.speak_dialog('NoDevicesAvailable')
 
     @intent_handler(IntentBuilder('').require('Search').require('AlbumTitle') \
                                      .require('Spotify'))
