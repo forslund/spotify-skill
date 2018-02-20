@@ -273,7 +273,7 @@ class SpotifySkill(MycroftSkill):
         if self.playback_prerequisits_ok():
             dev = self.get_device(self.device_name)
             if dev:
-                self.spotify.transfer_playback(dev['id'])
+                self.spotify.play(dev['id'])
                 self.dev_id = dev['id']
             else:
                 self.speak_dialog('NoDevicesAvailable')
