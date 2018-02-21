@@ -33,6 +33,7 @@ def get_token(dev_cred):
 
 
 class MycroftSpotifyCredentials(SpotifyClientCredentials):
+    """ Credentials object renewing through the mycroft backend."""
     def __init__(self, dev_cred):
         self.dev_cred = dev_cred
         self.access_token = None
@@ -50,11 +51,25 @@ class MycroftSpotifyCredentials(SpotifyClientCredentials):
 
 class SpotifyConnect(spotipy.Spotify):
     def get_devices(self):
+        """ Get a list of spotify devices from the spotify connect API.
+
+        Returns: list of spotify devices connected to the user.
+        """
         LOG.debug('getting devices')
         devices = self._get('me/player/devices')['devices']
         return devices
 
     def play(self, device, uris=None, context_uri=None):
+        """ Start playback of tracks, albums or artist. Can play either
+        a list of uris or a context_uri for things like artists and albums.
+        uri and context_uri shouldn't be provided at the same time.
+
+        Args:
+            device (int):      device id to start playback on
+            uris (list):       list of track uris to play
+            context_uri (str): spotify context uri for playing albums or
+                               artists.
+        """
         data = {}
         if uris:
             data['uris'] = uris
@@ -64,10 +79,10 @@ class SpotifyConnect(spotipy.Spotify):
         self._put(path, payload=data)
 
     def pause(self, device):
-        """ Pause user's playback.
+        """ Pause user's playback on device.
 
-            Parameters:
-                - device_id - device target for playback
+        Arguments:
+            device_id: device to pause
         """
         LOG.info('Pausing spotify playback')
         try:
@@ -76,36 +91,35 @@ class SpotifyConnect(spotipy.Spotify):
             LOG.error(e)
 
     def next(self, device):
-        """ Pause user's playback.
+        """ Skip track.
 
-            Parameters:
-                - device_id - device target for playback
+        Arguments:
+            device_id: device id for playback
         """
-        LOG.info('Pausing spotify playback')
+        LOG.info('This was terrible, let\'s play the next track')
         try:
             self._post('me/player/next?device_id={}'.format(device))
         except Exception as e:
             LOG.error(e)
 
     def prev(self, device):
-        """ Pause user's playback.
+        """ Move back in playlist.
 
-            Parameters:
-                - device_id - device target for playback
+        Arguments
+            device_id: device target for playback
         """
-        LOG.info('Pausing spotify playback')
+        LOG.info('That was pretty good, let\'s listen to that again')
         try:
             self._post('me/player/previous?device_id={}'.format(device))
         except Exception as e:
             LOG.error(e)
 
     def volume(self, device, volume):
-        """
-            Set volume of device:
+        """ Set volume of device:
 
-            Parameters:
-                device: device id
-                volume: volume in percent
+        Parameters:
+            device: device id
+            volume: volume in percent
         """
         uri = 'me/player/volume?volume_percent={}&device_id={}'.format(volume,
                                                                        device)
@@ -116,6 +130,7 @@ class SpotifyConnect(spotipy.Spotify):
 
 
 class SpotifySkill(MycroftSkill):
+    """Mycroft skill for spotify control through the Spotify Connect API."""
     def __init__(self):
         super(SpotifySkill, self).__init__()
         self.index = 0
@@ -125,6 +140,10 @@ class SpotifySkill(MycroftSkill):
         self.dev_id = None
 
     def launch_librespot(self):
+        """ Launch the librespot binary for the Mark-1.
+
+        TODO: Discovery mode
+        """
         platform = self.config_core.get("enclosure").get("platform", "unknown")
         path = self.settings.get('librespot_path', None)
         if platform == 'mycroft_mark_1' and not path:
@@ -140,11 +159,12 @@ class SpotifySkill(MycroftSkill):
             self.spotify.volume(dev['id'], 30)
 
     def initialize(self):
+        # Setup handlers for playback control messages
         self.add_event('mycroft.audio.service.next', self.next_track)
         self.add_event('mycroft.audio.service.prev', self.prev_track)
         self.add_event('mycroft.audio.service.pause', self.pause)
         self.add_event('mycroft.audio.service.resume', self.resume)
-
+        # Start an event handler for checking for authorization
         self.schedule_repeating_event(self.load_credentials,
                                       datetime.datetime.now(), 60,
                                       name='get_creds')
@@ -172,6 +192,7 @@ class SpotifySkill(MycroftSkill):
             self.launch_librespot()
 
     def create_intents(self):
+        """ Create intents for start playback handlers."""
         # play playlists
         self.register_intent_file('Play.intent', self.play_playlist)
         self.register_intent_file('PlayOn.intent', self.play_playlist_on)
@@ -185,17 +206,19 @@ class SpotifySkill(MycroftSkill):
         self.register_intent(intent, self.play_artist)
 
     def get_playlists(self):
-        """
-            Fetch user's playlists.
-        """
+        """ Fetch user's playlists. """
         self.playlists = {}
         playlists = self.spotify.current_user_playlists().get('items', [])
         for p in playlists:
             self.playlists[p['name']] = p
 
     def get_device(self, name):
-        """
-            Get best device matching the provided name.
+        """ Get best device matching the provided name.
+        
+        Arguments:
+            name (str): name of desired device
+
+        Returns: (dict) device or None if no devices found
         """
         # Check that there is a spotify connection
         if self.spotify is None:
@@ -211,10 +234,15 @@ class SpotifySkill(MycroftSkill):
             else:
                 dev = device[0]
             return dev
+        return None
 
     def get_best_playlist(self, playlist):
-        """
-            Get best playlist matching the desired playlist name
+        """ Get best playlist matching the provided name
+
+        Arguments:
+            playlist (str): Playlist name
+        
+        Returns: (str) best match
         """
         key, confidence = extractOne(playlist, self.playlists.keys())
         if confidence > 50:
@@ -223,9 +251,7 @@ class SpotifySkill(MycroftSkill):
             return None
 
     def play_playlist(self, message):
-        """
-            Play user playlist on default device.
-        """
+        """ Play user playlist on default device. """
         if message.data['utterance'] == 'play spotify':
             self.continue_current_playlist(message)
         elif self.playback_prerequisits_ok():
@@ -234,6 +260,9 @@ class SpotifySkill(MycroftSkill):
             self.start_playback(dev, playlist)
 
     def playback_prerequisits_ok(self):
+        """ Check that playback is possible and launch client if
+        neccessary.
+        """
         if self.spotify is None:
             self.speak('Not authorized')
             return False
@@ -259,9 +288,7 @@ class SpotifySkill(MycroftSkill):
             LOG.info('No spotify devices found')
 
     def play_playlist_on(self, message):
-        """
-            Play playlist on specific device.
-        """
+        """ Play playlist on specific device. """
         if self.playback_prerequisits_ok():
             device = message.data.get('device')
             playlist = self.get_best_playlist(message.data.get('playlist'))
@@ -293,6 +320,14 @@ class SpotifySkill(MycroftSkill):
             return self.search(message.data['Artist'], 'artist')
 
     def search(self, query, search_type):
+        """ Search for an album, playlist or artist.
+        Arguments:
+            query:       search query (album title, artist, etc.)
+            search_type: weather to search for an 'album', 'artist' or
+                         'playlist'
+
+            TODO: improve results of albums by checking artist
+        """
         dev = self.get_device(self.device_name)
         res = None
         if search_type == 'album' and len(query.split('by')) > 1:
@@ -324,39 +359,36 @@ class SpotifySkill(MycroftSkill):
         #self.show_notes()
 
     def pause(self, message):
-        """
-            Handler for playback control pause
-        """
+        """ Handler for playback control pause. """
         LOG.info('Pause Spotify')
+        # if authorized and playback was started by the skill
         if self.spotify and self.dev_id:
             self.spotify.pause(self.dev_id)
 
     def resume(self, message):
-        """
-            Handler for playback control resume
-        """
+        """ Handler for playback control resume. """
         LOG.info('Resume Spotify')
+        # if authorized and playback was started by the skill
         if self.spotify and self.dev_id:
             self.spotify.play(self.dev_id)
 
     def next_track(self, message):
-        """
-            Handler for playback control next
-        """
+        """ Handler for playback control next. """
         LOG.info('Next Spotify track')
+        # if authorized and playback was started by the skill
         if self.spotify and self.dev_id:
             self.spotify.next(self.dev_id)
 
     def prev_track(self, message):
-        """
-            Handler for playback control prev
-        """
+        """ Handler for playback control prev. """
         LOG.info('Previous Spotify track')
+        # if authorized and playback was started by the skill
         if self.spotify and self.dev_id:
             self.spotify.prev(self.dev_id)
 
     @intent_handler(IntentBuilder('').require('Spotify').require('Device'))
     def list_devices(self, message):
+        """ List available devices. """
         LOG.info(self)
         if self.spotify:
             devices = [d['name'] for d in self.spotify.get_devices()]
@@ -380,14 +412,11 @@ class SpotifySkill(MycroftSkill):
                                       name='dancing_notes')
 
     def display_notes(self):
-        """
-            Start timer thread displaying notes on the display.
-        """
+        """ Start timer thread displaying notes on the display. """
         pass
 
     def clear_display(self):
         """ Clear display. """
-
         self.enclosure.mouth_display(img_code="HIAAAAAAAAAAAAAA",
                                      refresh=False)
         self.enclosure.mouth_display(img_code="HIAAAAAAAAAAAAAA",
@@ -406,14 +435,13 @@ class SpotifySkill(MycroftSkill):
                                          refresh=False)
 
     def _update_notes(self):
-        """
-            Repeating event updating the display.
-        """
+        """ Repeating event updating the display. """
         if self._should_display_notes():
             self.draw_notes(self.index)
             self.index = ((self.index + 1) % 2)
 
     def stop(self):
+        """ Stop playback. """
         #self.remove_event('dancing_notes')
         self.enclosure.reset()
         self.pause(None)
