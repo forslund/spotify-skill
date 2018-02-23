@@ -1,22 +1,18 @@
-import time
-import datetime
-
 from mycroft.skills.core import MycroftSkill, intent_handler, \
                                 intent_file_handler
+import mycroft.client.enclosure.display_manager as DisplayManager
 from mycroft.util.log import LOG
+from mycroft.api import DeviceApi
+from requests import HTTPError
 from adapt.intent import IntentBuilder
 
-import mycroft.client.enclosure.display_manager as DisplayManager
-
+import time
+import datetime
 from subprocess import Popen
+from fuzzywuzzy.process import extractOne
 
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-
-from mycroft.api import DeviceApi
-from requests import HTTPError
-
-from fuzzywuzzy.process import extractOne
 
 
 def get_token(dev_cred):
