@@ -3,29 +3,30 @@
     "skillMetadata": {
         "sections": [
             {
-                "name": "Spotify OAuth",
+                "name": "Spotify Account",
                 "fields": [
-                    {
-                        "name": "Spotify",
-                        "type": "oauth",
-                        "value": 1
-                    },
                     {
                         "type": "label",
                         "value": "",
-                        "label": "</p>To launch the spotify connect player on the <b>Mark I</b> username and password is needed. For interacting with other devices such as chromecast and Spotify desktop clients this is not needed."
+                        "label": "You must connect to a Spotify Premium account to access music.  Provide your Spotify username/password and then Connect with the button below.<p/>"
                     },
                     {
                         "name": "user",
                         "type": "text",
                         "label": "Username",
-                        "value": ""
+                        "value": "",
+                        "placeholder": "Spotify username"
                     },
                     {
                         "name": "password",
                         "type": "password",
                         "label": "Password",
                         "value": ""
+                    },
+                    {
+                        "name": "Spotify",
+                        "type": "oauth",
+                        "value": 1
                     }
                 ]
             }
