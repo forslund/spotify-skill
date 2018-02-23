@@ -1,23 +1,26 @@
-## Spotify skill
-Listen to music from Spotify
+## Spotify
+Listen to music from your Spotify Premium music account
 
 ## Description 
-Spotify is a popular music streaming service allowing user to search and play tracks from a huge music library and their own playlists.
+Stream your favorite music from the popular Spotify music service.  Spotify Premium users can
+search and play tracks from their own playlists or the huge Spotify music library.
 
 ### Authorization:
-The skill uses the OAuth gateway on Mycroft home. After installing the skill go to home.mycroft.ai, select skills and click connect. This will start the authorization process and will ask you for permission to use your Spotify account. **Note** This feature is still in a pre-release state and may not work 100% of the time.
+To access your Premium account, install this skill and visit the [Skill
+settings for Spotify](https://home.mycroft.ai/#/skill).
 
 ### Playing on the Mark-1
 On the Mark-1 the skill will start up *librespot* if the user and password is entered in the skill settings allowing playback on the device.
 
 ## Examples 
-* "what spotify devices are available"
-* "play discovery weekly"
-* "search spotify for *hello nasty*"
-* "play something by coventant"
-* "play the album hello nasty on spotify"
-* "next track"
-* "pause"
+* "What Spotify devices are available?"
+* "Play discovery weekly"
+* "Search Spotify for Hello Nasty*"
+* "Play something by Coventant"
+* "Play the album hello nasty on spotify"
+* "Next track"
+* "Pause"
+* "Stop"
 
 ## Todo
 - Add playback of individual tracks
