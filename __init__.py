@@ -51,11 +51,6 @@ class MycroftSpotifyCredentials(SpotifyClientCredentials):
 
 
 class SpotifyConnect(spotipy.Spotify):
-    def __init__(self, skill):
-        creds = MycroftSpotifyCredentials(1)
-        super(SpotifyConnect, self).__init__(client_credentials_manager=creds)
-        self.skill = skill
-
     def get_devices(self):
         """ Get a list of spotify devices from the spotify connect API.
 
@@ -71,7 +66,7 @@ class SpotifyConnect(spotipy.Spotify):
         return self._get('me/player/currently-playing')
 
     def is_playing(self, device):
-        """ Get current playback state
+        """ Get current playback state.
         """
         try:
             status = self.status(device)
@@ -98,13 +93,7 @@ class SpotifyConnect(spotipy.Spotify):
         elif context_uri:
             data['context_uri'] = context_uri
         path = 'me/player/play?device_id={}'.format(device)
-        try:
-            self._put(path, payload=data)
-        except spotipy.SpotifyException as e:
-            # TODO: Catch other conditions?
-            self.skill.speak_dialog('NotAuthorized')
-        except:
-            self.skill.speak_dialog('NotAuthorized')
+        self._put(path, payload=data)
 
     def pause(self, device):
         """ Pause user's playback on device.
@@ -202,14 +191,15 @@ class SpotifySkill(MycroftSkill):
 
     def load_credentials(self):
         """ Repeating method trying to retrieve credentials from the
-            backend.
+        backend.
 
-            When credentials are found the skill connects
+        When credentials are found the skill connects
         """
         try:
-            self.spotify = SpotifyConnect(self)
+            creds = MycroftSpotifyCredentials(1)
+            self.spotify = SpotifyConnect(client_credentials_manager=creds)
         except HTTPError:
-            LOG.info('Couldn\'t fetch creds')
+            LOG.info('Couldn\'t fetch credentials')
         LOG.info(self.spotify)
         if self.spotify:
             # Spotfy connection worked, cancel recurring event and
@@ -300,6 +290,19 @@ class SpotifySkill(MycroftSkill):
             self.launch_librespot()
         return True
 
+    def spotify_play(self, dev_id, uris=None, context_uri=None):
+        """ Start spotify playback and catch any exceptions. """
+        try:
+            self.spotify.play(dev_id, uris, context_uri)
+            self.dev_id = dev_id
+            # self.show_notes()
+        except spotipy.SpotifyException as e:
+            # TODO: Catch other conditions?
+            self.speak_dialog('NotAuthorized')
+        except Exception as e:
+            LOG.exception(e)
+            self.speak_dialog('NotAuthorized')
+
     def start_playback(self, dev, playlist):
         if dev and playlist:
             LOG.info(u'playing {} using {}'.format(playlist, dev['name']))
@@ -309,8 +312,7 @@ class SpotifySkill(MycroftSkill):
             tracks = self.spotify.user_playlist_tracks(pl['owner']['id'],
                                                        pl['id'])
             uris = [t['track']['uri'] for t in tracks['items']]
-            self.spotify.play(dev['id'], uris=uris)
-            self.dev_id = dev['id']
+            self.spotify_play(dev['id'], uris=uris)
             # self.show_notes()
         elif not playlist:
             LOG.info(u'couldn\'t find {}'.format(playlist))
@@ -330,8 +332,7 @@ class SpotifySkill(MycroftSkill):
         if self.playback_prerequisits_ok():
             dev = self.get_device(self.device_name)
             if dev:
-                self.spotify.play(dev['id'])
-                self.dev_id = dev['id']
+                self.spotify_play(dev['id'])
             else:
                 self.speak_dialog('NoDevicesAvailable')
 
@@ -383,37 +384,34 @@ class SpotifySkill(MycroftSkill):
         self.speak_dialog('listening_to',
                           data={'tracks': res['name']})
         time.sleep(2)
-        self.spotify.play(dev['id'], context_uri=res['uri'])
-        self.dev_id = dev['id']
-        # self.show_notes()
+        self.spotify_play(dev['id'], context_uri=res['uri'])
 
     def pause(self, message):
         """ Handler for playback control pause. """
-        LOG.info('Pause Spotify')
         # if authorized and playback was started by the skill
         if self.spotify and self.dev_id:
-            LOG.info('Pause Spotify...')
+            LOG.info('Pausing Spotify...')
             self.spotify.pause(self.dev_id)
 
     def resume(self, message):
         """ Handler for playback control resume. """
-        LOG.info('Resume Spotify')
         # if authorized and playback was started by the skill
         if self.spotify and self.dev_id:
-            self.spotify.play(self.dev_id)
+            LOG.info('Resume Spotify')
+            self.spotify_play(self.dev_id)
 
     def next_track(self, message):
         """ Handler for playback control next. """
-        LOG.info('Next Spotify track')
         # if authorized and playback was started by the skill
         if self.spotify and self.dev_id:
+            LOG.info('Next Spotify track')
             self.spotify.next(self.dev_id)
 
     def prev_track(self, message):
         """ Handler for playback control prev. """
-        LOG.info('Previous Spotify track')
         # if authorized and playback was started by the skill
         if self.spotify and self.dev_id:
+            LOG.info('Previous Spotify track')
             self.spotify.prev(self.dev_id)
 
     @intent_handler(IntentBuilder('').require('Spotify').require('Device'))
