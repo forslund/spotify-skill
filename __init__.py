@@ -34,6 +34,7 @@ from adapt.intent import IntentBuilder
 import time
 import datetime
 from subprocess import Popen
+from socket import gethostname
 
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -93,26 +94,6 @@ class SpotifyConnect(spotipy.Spotify):
             return devices
         except Exception as e:
             LOG.error(e)
-
-    def get_device(self, name):
-        """ Get a Spotify devices from the API
-
-        Args:
-            name (str): The device name (fuzzy matches)
-        Returns:
-            (dict) None or the matching device's description
-        """
-        devices = self.get_devices()
-        if devices and len(devices) > 0:
-            # Otherwise get a device with the selected name
-            devices_by_name = {d['name']: d for d in devices}
-            key, confidence = match_one(name, devices_by_name.keys())
-            if confidence > 0.5:
-                return devices_by_name[key]
-            else:
-                return devices[0]
-
-        return None
 
     def status(self):
         """ Get current playback status (across the Spotify system) """
@@ -247,6 +228,9 @@ class SpotifySkill(MycroftSkill):
         self.idle_count = 0
         self.ducking = False
         self.mouth_text = None
+
+        self.__device_list = None
+        self.__devices_fetched = 0
         self.OAUTH_ID = 1
 
     def launch_librespot(self):
@@ -267,7 +251,7 @@ class SpotifySkill(MycroftSkill):
             time.sleep(3)  # give libreSpot time to start-up
 
             # Lower the volume since max volume sounds terrible on the Mark-1
-            dev = self.spotify.get_device(self.device_name)
+            dev = self.device_by_name(self.device_name)
             if dev:
                 self.spotify.volume(dev['id'], 30)
 
@@ -415,50 +399,53 @@ class SpotifySkill(MycroftSkill):
         for p in playlists:
             self.playlists[p['name']] = p
 
+    @property
+    def devices(self):
+        """ Cached list of devices. """
+        now = time.time()
+        if (not self.__device_list or
+                now - self.__devices_fetched > 10):
+            self.__device_list = self.spotify.get_devices()
+            self.__devices_fetched = now
+        return self.__device_list
+
+    def device_by_name(self, name):
+        """ Get a Spotify devices from the API
+
+        Args:
+            name (str): The device name (fuzzy matches)
+        Returns:
+            (dict) None or the matching device's description
+        """
+        devices = self.devices
+        if devices and len(devices) > 0:
+            # Otherwise get a device with the selected name
+            devices_by_name = {d['name']: d for d in devices}
+            key, confidence = match_one(name, devices_by_name.keys())
+            if confidence > 0.5:
+                return devices_by_name[key]
+
+        return None
+
     def get_default_device(self):
         """ Get preferred playback device """
-
         if self.spotify:
-            devices = self.spotify.get_devices()
-            if devices and len(devices) > 0:
-                # When there is an active Spotify device somewhere, use it
-                if self.spotify.is_playing():
-                    for dev in devices:
-                        if dev["is_active"]:
-                            return dev  # Use this device
+            # When there is an active Spotify device somewhere, use it
+            if (self.devices and len(self.devices) > 0 and
+                    self.spotify.is_playing()):
+                for dev in self.devices:
+                    if dev["is_active"]:
+                        return dev  # Use this device
 
             # No playing device found, use the local Spotify instance
-            dev = self.spotify.get_device(self.device_name)
-            if not dev["is_active"]:
+            dev = self.device_by_name(self.device_name)
+            if not dev:
+                dev = self.device_by_name(gethostname())
+            if dev and not dev["is_active"]:
                 self.spotify.transfer_playback(dev["id"], False)
             return dev
 
-        return None  # none found!
-
-    def get_device(self, name):
-        """ Get best device matching the provided name.
-
-        Arguments:
-            name (str): name of desired device
-        Returns:
-            (dict) device (activated) or None if no devices found
-        """
-        # Check that there is a spotify connection
-        if self.spotify is None:
-            self.speak_dialog('NotAuthorized')
-            return
-
-        dev = None
-        if name:
-            dev = self.spotify.get_device(name)
-        if not dev:
-            dev = self.spotify.get_device(self.device_name)
-        if dev:
-            if not dev["is_active"]:
-                # Assume we are about to act on this device,
-                # transfer playback to it.
-                self.spotify.transfer_playback(dev["id"], False)
-        return dev
+        return None
 
     def get_best_playlist(self, playlist):
         """ Get best playlist matching the provided name
@@ -536,10 +523,14 @@ class SpotifySkill(MycroftSkill):
     def play_playlist_on(self, message):
         """ Play playlist on specific device. """
         if self.playback_prerequisits_ok():
-            device = message.data.get('device')
             playlist = self.get_best_playlist(message.data.get('playlist'))
-            dev = self.get_device(message.data.get('device'))
-            self.start_playback(dev, playlist)
+            dev = self.device_by_name(message.data.get('device'))
+            if dev:
+                # Assume we are about to act on this device,
+                # transfer playback to it.
+                if not dev["is_active"]:
+                    self.spotify.transfer_playback(dev["id"], False)
+                self.start_playback(dev, playlist)
 
     @intent_file_handler('PlaySpotify.intent')
     def continue_current_playlist(self, message):
@@ -651,15 +642,16 @@ class SpotifySkill(MycroftSkill):
                 self.speak_dialog('NoDevicesAvailable')
         else:
             self.speak_dialog('NotAuthorized')
-    @intent_handler(IntentBuilder('').require('Transfer').require('Spotify') \
+
+    @intent_handler(IntentBuilder('').require('Transfer').require('Spotify')
                                      .require('ToDevice'))
     def transfer_playback(self, message):
         """ Move playback from one device to another. """
         if self.spotify and self.spotify.is_playing():
-            dev = self.spotify.get_device(message.data['ToDevice'])
+            dev = self.device_by_name(message.data['ToDevice'])
             if dev:
                 self.spotify.transfer_playback(dev['id'])
-            
+
     def show_notes(self):
         """ show notes, HA HA """
         self.schedule_repeating_event(self._update_notes,
