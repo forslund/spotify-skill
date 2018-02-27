@@ -680,7 +680,7 @@ class SpotifySkill(MycroftSkill):
 
     def stop(self):
         """ Stop playback. """
-        if not self.spotify.is_playing():
+        if not self.spotify or not self.spotify.is_playing():
             self.dev_id = None
             return False
 
