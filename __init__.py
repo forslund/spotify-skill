@@ -39,7 +39,6 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 
 
-
 def get_token(dev_cred):
     """ Get token with a single retry.
     Args:
@@ -144,15 +143,19 @@ class SpotifyConnect(spotipy.Spotify):
             # Technically a 204 return from status() request means 'no track'
             return False  # assume not playing
 
-    def transfer(self, device):
-        """ Prepare given device for playback.
-        Args:
-            device (int): device to start playback on.
+    def transfer_playback(self, device_id, force_play=True):
+        """ Transfer playback to another device.
+        Arguments:
+            device_id (int):      transfer playback to this device
+            force_play (boolean): true if playback should start after
+                                  transfer
         """
-        data = {"device_ids": [device]}
-        path = 'me/player'
+        data = {
+            'device_ids': [device_id],  # Doesn't allow more than one
+            'play': force_play
+        }
         try:
-            self._put(path, payload=data)
+            return self._put("me/player", payload=data)
         except Exception as e:
             LOG.error(e)
 
@@ -427,7 +430,7 @@ class SpotifySkill(MycroftSkill):
             # No playing device found, use the local Spotify instance
             dev = self.spotify.get_device(self.device_name)
             if not dev["is_active"]:
-                self.spotify.transfer(dev["id"])
+                self.spotify.transfer_playback(dev["id"], False)
             return dev
 
         return None  # none found!
@@ -454,7 +457,7 @@ class SpotifySkill(MycroftSkill):
             if not dev["is_active"]:
                 # Assume we are about to act on this device,
                 # transfer playback to it.
-                self.spotify.transfer(dev["id"])
+                self.spotify.transfer_playback(dev["id"], False)
         return dev
 
     def get_best_playlist(self, playlist):
