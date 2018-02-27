@@ -651,7 +651,15 @@ class SpotifySkill(MycroftSkill):
                 self.speak_dialog('NoDevicesAvailable')
         else:
             self.speak_dialog('NotAuthorized')
-
+    @intent_handler(IntentBuilder('').require('Transfer').require('Spotify') \
+                                     .require('ToDevice'))
+    def transfer_playback(self, message):
+        """ Move playback from one device to another. """
+        if self.spotify and self.spotify.is_playing():
+            dev = self.spotify.get_device(message.data['ToDevice'])
+            if dev:
+                self.spotify.transfer_playback(dev['id'])
+            
     def show_notes(self):
         """ show notes, HA HA """
         self.schedule_repeating_event(self._update_notes,
