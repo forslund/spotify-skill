@@ -25,6 +25,7 @@ speaker on the equipment.)
 from mycroft.skills.core import MycroftSkill, intent_handler, \
                                 intent_file_handler
 import mycroft.client.enclosure.display_manager as DisplayManager
+from mycroft.util.parse import match_one
 from mycroft.util.log import LOG
 from mycroft.api import DeviceApi
 from requests import HTTPError
@@ -33,7 +34,6 @@ from adapt.intent import IntentBuilder
 import time
 import datetime
 from subprocess import Popen
-from fuzzywuzzy.process import extractOne
 
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -107,9 +107,11 @@ class SpotifyConnect(spotipy.Spotify):
         if devices and len(devices) > 0:
             # Otherwise get a device with the selected name
             devices_by_name = {d['name']: d for d in devices}
-            key, confidence = extractOne(name, devices_by_name.keys())
+            key, confidence = match_one(name, devices_by_name.keys())
             if confidence > 0.5:
                 return devices_by_name[key]
+            else:
+                return devices[0]
 
         return None
 
@@ -463,8 +465,8 @@ class SpotifySkill(MycroftSkill):
 
         Returns: (str) best match
         """
-        key, confidence = extractOne(playlist, self.playlists.keys())
-        if confidence > 50:
+        key, confidence = match_one(playlist, self.playlists.keys())
+        if confidence > 0.5:
             return key
         else:
             return None

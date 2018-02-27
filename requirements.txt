@@ -1,2 +1,1 @@
 spotipy==2.4.4
-fuzzywuzzy
