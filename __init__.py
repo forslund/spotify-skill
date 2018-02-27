@@ -315,7 +315,7 @@ class SpotifySkill(MycroftSkill):
     def handle_listener_started(self, message):
         """ Handle auto ducking when listener is started. """
         if self.spotify.is_playing():
-            self.pause()
+            self.__pause()
             self.ducking = True
 
             # Start idle check
@@ -597,12 +597,16 @@ class SpotifySkill(MycroftSkill):
         time.sleep(2)
         self.spotify_play(dev['id'], context_uri=res['uri'])
 
-    def pause(self, message=None):
-        """ Handler for playback control pause. """
+    def __pause(self):
         # if authorized and playback was started by the skill
         if self.spotify:
             LOG.info('Pausing Spotify...')
             self.spotify.pause(self.dev_id)
+
+    def pause(self, message=None):
+        """ Handler for playback control pause. """
+        self.ducking = False
+        self.__pause()
 
     def resume(self, message=None):
         """ Handler for playback control resume. """
