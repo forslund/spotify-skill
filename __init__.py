@@ -242,7 +242,7 @@ class SpotifySkill(MycroftSkill):
         self.index = 0
         self.spotify = None
         self.process = None
-        self.device_name = DeviceApi().get().get('name')
+        self.device_name = None
         self.dev_id = None
         self.idle_count = 0
         self.ducking = False
@@ -258,7 +258,8 @@ class SpotifySkill(MycroftSkill):
         if platform == 'mycroft_mark_1' and not path:
             path = 'librespot'
 
-        if path and 'user' in self.settings and 'password' in self.settings:
+        if (path and self.device_name and
+                'user' in self.settings and 'password' in self.settings):
             # TODO: Error message when provided username/password don't work
             self.process = Popen([path, '-n', self.device_name,
                                   '-u', self.settings['user'],
@@ -308,6 +309,9 @@ class SpotifySkill(MycroftSkill):
             # If not able to authorize, the method will be repeated after 60
             # seconds
             self.create_intents()
+            # Should be safe to set device_name here since home has already
+            # been connected
+            self.device_name = DeviceApi().get().get('name')
             self.cancel_scheduled_event('SpotifyLogin')
             self.get_playlists()
             self.launch_librespot()
@@ -367,9 +371,9 @@ class SpotifySkill(MycroftSkill):
 
     def _update_display(self, message):
         # Checks once a second for feedback
-        status = self.spotify.status()
+        status = self.spotify.status() if self.spotify else {}
 
-        if not status["is_playing"]:
+        if not status.get('is_playing'):
             self.stop_monitor()
             self.mouth_text = None
             self.enclosure.mouth_reset()
@@ -702,6 +706,11 @@ class SpotifySkill(MycroftSkill):
             # Clear playing device id
             self.dev_id = None
             return True
+
+    def shutdown(self):
+        """ Remove the monitor at shutdown. """
+        self.stop_monitor()
+        super(SpotifySkill, self).shutdown()
 
     def _should_display_notes(self):
         _get_active = DisplayManager.get_active
