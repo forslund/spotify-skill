@@ -232,6 +232,7 @@ class SpotifySkill(MycroftSkill):
         self.__device_list = None
         self.__devices_fetched = 0
         self.OAUTH_ID = 1
+        self.DEFAULT_VOLUME = 65
 
     def launch_librespot(self):
         """ Launch the librespot binary for the Mark-1.
@@ -254,7 +255,7 @@ class SpotifySkill(MycroftSkill):
             # Lower the volume since max volume sounds terrible on the Mark-1
             dev = self.device_by_name(self.device_name)
             if dev:
-                self.spotify.volume(dev['id'], 30)
+                self.spotify.volume(dev['id'], self.DEFAULT_VOLUME)
 
     def initialize(self):
         # Setup handlers for playback control messages
