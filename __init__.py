@@ -34,6 +34,7 @@ from adapt.intent import IntentBuilder
 import time
 import datetime
 from subprocess import Popen
+import signal
 from socket import gethostname
 
 import spotipy
@@ -725,10 +726,19 @@ class SpotifySkill(MycroftSkill):
             self.dev_id = None
             return True
 
+    def stop_librespot(self):
+        """ Send Terminate signal to librespot if it's running. """
+        if self.process and self.process.poll() is None:
+            self.process.send_signal(signal.SIGTERM)
+            self.process.communicate() # Communicate to remove zombie
+
     def shutdown(self):
         """ Remove the monitor at shutdown. """
-        self.stop_monitor()
+        # Do normal shutdown procedure
         super(SpotifySkill, self).shutdown()
+
+        self.stop_monitor()
+        self.stop_librespot()
 
     def _should_display_notes(self):
         _get_active = DisplayManager.get_active
