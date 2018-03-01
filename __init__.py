@@ -401,7 +401,7 @@ class SpotifySkill(MycroftSkill):
     def playlists(self):
         """ Playlists, cached for 5 minutes """
         now = time.time()
-        if not self._playlists or (now - self.__playlists_fetched > 5*60):
+        if not self._playlists or (now - self.__playlists_fetched > 5 * 60):
             self._playlists = {}
             playlists = self.spotify.current_user_playlists().get('items', [])
             for p in playlists:
@@ -443,14 +443,14 @@ class SpotifySkill(MycroftSkill):
             if (self.devices and len(self.devices) > 0 and
                     self.spotify.is_playing()):
                 for dev in self.devices:
-                    if dev["is_active"]:
+                    if dev['is_active']:
                         return dev  # Use this device
 
             # No playing device found, use the local Spotify instance
             dev = self.device_by_name(self.device_name)
             if not dev:
                 dev = self.device_by_name(gethostname())
-            if dev and not dev["is_active"]:
+            if dev and not dev['is_active']:
                 self.spotify.transfer_playback(dev["id"], False)
             return dev
 
@@ -501,7 +501,7 @@ class SpotifySkill(MycroftSkill):
     def spotify_play(self, dev_id, uris=None, context_uri=None):
         """ Start spotify playback and catch any exceptions. """
         try:
-            LOG.info("spotify_play: "+str(dev_id))
+            LOG.info(u'spotify_play: {}'.format(dev_id))
             self.spotify.play(dev_id, uris, context_uri)
             self.start_monitor()
             self.dev_id = dev_id
@@ -514,13 +514,13 @@ class SpotifySkill(MycroftSkill):
             self.speak_dialog('NotAuthorized')
 
     def start_playback(self, dev, playlist_name):
-        LOG.info("Playlist: "+str(playlist_name))
+        LOG.info(u'Playlist: {}'.format(playlist_name))
         
         playlist = None
         if playlist_name:
             playlist = self.get_best_playlist(playlist_name)
         if not playlist:
-            LOG.info("Playlists:"+str(self.playlists))
+            LOG.info(u'Playlists: {}'.format(self.playlists))
             if not self.playlists:
                 return  # different default action when no lists defined?
             playlist = self.get_best_playlist(self.playlists.keys()[0])
@@ -548,7 +548,7 @@ class SpotifySkill(MycroftSkill):
             if dev:
                 # Assume we are about to act on this device,
                 # transfer playback to it.
-                if not dev["is_active"]:
+                if not dev['is_active']:
                     self.spotify.transfer_playback(dev["id"], False)
                 self.start_playback(dev, playlist)
 
