@@ -356,9 +356,9 @@ class SpotifySkill(MycroftSkill):
 
     def _update_display(self, message):
         # Checks once a second for feedback
-        status = self.spotify.status() if self.spotify else {}
+        status = self.spotify.status() if self.spotify else None
 
-        if not status.get('is_playing'):
+        if not status or not status.get('is_playing'):
             self.stop_monitor()
             self.mouth_text = None
             self.enclosure.mouth_reset()
