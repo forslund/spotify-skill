@@ -599,18 +599,22 @@ class SpotifySkill(MycroftSkill):
                 LOG.info(album)
                 res = album
         elif search_type == 'artist':
-            LOG.info(result['artists'])
-            artist = result['artists']['items'][0]
-            LOG.info(artist)
-            res = artist
+            if len(result['artists']['items']) > 0 and dev:
+                LOG.info(result['artists'])
+                artist = result['artists']['items'][0]
+                LOG.info(artist)
+                res = artist
         else:
             LOG.info('ERROR')
             return
 
-        self.speak_dialog('listening_to',
-                          data={'tracks': res['name']})
-        time.sleep(2)
-        self.spotify_play(dev['id'], context_uri=res['uri'])
+        if res:
+            self.speak_dialog('listening_to',
+                              data={'tracks': res['name']})
+            time.sleep(2)
+            self.spotify_play(dev['id'], context_uri=res['uri'])
+        else:
+            self.speak_dialog('NothingFound')
 
     def __pause(self):
         # if authorized and playback was started by the skill
