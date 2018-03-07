@@ -734,11 +734,11 @@ class SpotifySkill(MycroftSkill):
 
     def shutdown(self):
         """ Remove the monitor at shutdown. """
-        # Do normal shutdown procedure
-        super(SpotifySkill, self).shutdown()
-
         self.stop_monitor()
         self.stop_librespot()
+
+        # Do normal shutdown procedure
+        super(SpotifySkill, self).shutdown()
 
     def _should_display_notes(self):
         _get_active = DisplayManager.get_active
