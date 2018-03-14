@@ -260,6 +260,9 @@ class SpotifySkill(MycroftSkill):
                 self.spotify.volume(dev['id'], self.DEFAULT_VOLUME)
 
     def initialize(self):
+        # Make sure the spotify login scheduled event is shutdown
+        self.cancel_scheduled_event('SpotifyLogin')
+        return #Disable the skill
         # Setup handlers for playback control messages
         self.add_event('mycroft.audio.service.next', self.next_track)
         self.add_event('mycroft.audio.service.prev', self.prev_track)
@@ -271,6 +274,7 @@ class SpotifySkill(MycroftSkill):
         self.on_websettings_changed()
 
     def on_websettings_changed(self):
+        return
         if not self.spotify:
             if 'user' in self.settings and 'password' in self.settings:
                 try:
@@ -283,6 +287,7 @@ class SpotifySkill(MycroftSkill):
 
     def load_credentials(self):
         """ Retrieve credentials from the backend and connect to Spotify """
+        return
         try:
             creds = MycroftSpotifyCredentials(self.OAUTH_ID)
             self.spotify = SpotifyConnect(client_credentials_manager=creds)
