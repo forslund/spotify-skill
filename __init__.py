@@ -591,6 +591,10 @@ class SpotifySkill(MycroftSkill):
             TODO: improve results of albums by checking artist
         """
         dev = self.get_default_device()
+        if not dev:
+            self.speak_dialog('NoDefaultDeviceAvailable')
+            return
+
         res = None
         if search_type == 'album' and len(query.split('by')) > 1:
             title, artist = query.split('by')
