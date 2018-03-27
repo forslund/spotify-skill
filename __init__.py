@@ -52,6 +52,8 @@ def get_token(dev_cred):
     except HTTPError as e:
         if e.response.status_code == 404:  # Token doesn't exist
             raise
+        if e.response.status_code == 401:  # Device isn't paired
+            raise
         else:
             retry = True
     if retry:
