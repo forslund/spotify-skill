@@ -279,7 +279,9 @@ class SpotifySkill(MycroftSkill):
         self.on_websettings_changed()
 
     def on_websettings_changed(self):
-        if not self.spotify:
+        # Only attempt to load credentials if the username has been set
+        # will limit the accesses to the api.
+        if not self.spotify and self.settings.get('user', None):
             try:
                 self.load_credentials()
             except Exception:
