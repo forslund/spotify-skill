@@ -409,6 +409,8 @@ class SpotifySkill(MycroftSkill):
     @property
     def playlists(self):
         """ Playlists, cached for 5 minutes """
+        if not self.spotify:
+            return []  # No connection, no playlists
         now = time.time()
         if not self._playlists or (now - self.__playlists_fetched > 5 * 60):
             self._playlists = {}
@@ -421,6 +423,8 @@ class SpotifySkill(MycroftSkill):
     @property
     def devices(self):
         """ Devices, cached for 60 seconds """
+        if not self.spotify:
+            return []  # No connection, no devices
         now = time.time()
         if not self.__device_list or (now - self.__devices_fetched > 60):
             self.__device_list = self.spotify.get_devices()
