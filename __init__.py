@@ -745,6 +745,7 @@ class SpotifySkill(MycroftSkill):
 
     def shutdown(self):
         """ Remove the monitor at shutdown. """
+        self.cancel_scheduled_event('SpotifyLogin')
         self.stop_monitor()
         self.stop_librespot()
 
