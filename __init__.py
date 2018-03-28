@@ -446,7 +446,9 @@ class SpotifySkill(MycroftSkill):
             # Otherwise get a device with the selected name
             devices_by_name = {d['name']: d for d in devices}
             key, confidence = match_one(name, devices_by_name.keys())
-            return devices_by_name[key]
+            if confidence > 0.5:
+                return devices_by_name[key]
+        return None
 
     def get_default_device(self):
         """ Get preferred playback device """
@@ -460,8 +462,12 @@ class SpotifySkill(MycroftSkill):
 
             # No playing device found, use the local Spotify instance
             dev = self.device_by_name(self.device_name)
+            # if not check if a desktop spotify client is playing
             if not dev:
                 dev = self.device_by_name(gethostname())
+            # use first best device if none of the prioritized works
+            if not dev and len(self.devices) > 0:
+                dev = self.devices[0]
             if dev and not dev['is_active']:
                 self.spotify.transfer_playback(dev["id"], False)
             return dev
