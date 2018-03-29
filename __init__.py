@@ -52,6 +52,8 @@ def get_token(dev_cred):
     except HTTPError as e:
         if e.response.status_code == 404:  # Token doesn't exist
             raise
+        if e.response.status_code == 401:  # Device isn't paired
+            raise
         else:
             retry = True
     if retry:
@@ -262,7 +264,6 @@ class SpotifySkill(MycroftSkill):
     def initialize(self):
         # Make sure the spotify login scheduled event is shutdown
         self.cancel_scheduled_event('SpotifyLogin')
-        return #Disable the skill
         # Setup handlers for playback control messages
         self.add_event('mycroft.audio.service.next', self.next_track)
         self.add_event('mycroft.audio.service.prev', self.prev_track)
@@ -271,23 +272,29 @@ class SpotifySkill(MycroftSkill):
 
         # Check and then monitor for credential changes
         self.settings.set_changed_callback(self.on_websettings_changed)
+        # Retry in 5 minutes
+        self.schedule_repeating_event(self.on_websettings_changed,
+                                      None, 5*60,
+                                      name='SpotifyLogin')
         self.on_websettings_changed()
 
     def on_websettings_changed(self):
-        return
-        if not self.spotify:
+        # Only attempt to load credentials if the username has been set
+        # will limit the accesses to the api.
+        if not self.spotify and self.settings.get('user', None):
+            try:
+                self.load_credentials()
+            except Exception:
+                pass
+        if self.spotify:
+            self.cancel_scheduled_event('SpotifyLogin')
             if 'user' in self.settings and 'password' in self.settings:
-                try:
-                    self.load_credentials()
-                except:
-                    # Retry in 5 minutes
-                    self.schedule_repeating_event(self.on_websettings_changed,
-                                                  None, 5*60,
-                                                  name='SpotifyLogin')
+                if self.process:
+                    self.stop_librespot()
+                self.launch_librespot()
 
     def load_credentials(self):
         """ Retrieve credentials from the backend and connect to Spotify """
-        return
         try:
             creds = MycroftSpotifyCredentials(self.OAUTH_ID)
             self.spotify = SpotifyConnect(client_credentials_manager=creds)
@@ -304,8 +311,6 @@ class SpotifySkill(MycroftSkill):
             # Should be safe to set device_name here since home has already
             # been connected
             self.device_name = DeviceApi().get().get('name')
-            self.cancel_scheduled_event('SpotifyLogin')
-            self.launch_librespot()
 
     ######################################################################
     # Handle auto ducking when listener is started.
@@ -406,6 +411,8 @@ class SpotifySkill(MycroftSkill):
     @property
     def playlists(self):
         """ Playlists, cached for 5 minutes """
+        if not self.spotify:
+            return []  # No connection, no playlists
         now = time.time()
         if not self._playlists or (now - self.__playlists_fetched > 5 * 60):
             self._playlists = {}
@@ -414,10 +421,12 @@ class SpotifySkill(MycroftSkill):
                 self._playlists[p['name']] = p
             self.__playlists_fetched = now
         return self._playlists
-    
+
     @property
     def devices(self):
         """ Devices, cached for 60 seconds """
+        if not self.spotify:
+            return []  # No connection, no devices
         now = time.time()
         if not self.__device_list or (now - self.__devices_fetched > 60):
             self.__device_list = self.spotify.get_devices()
@@ -439,7 +448,6 @@ class SpotifySkill(MycroftSkill):
             key, confidence = match_one(name, devices_by_name.keys())
             if confidence > 0.5:
                 return devices_by_name[key]
-
         return None
 
     def get_default_device(self):
@@ -454,8 +462,12 @@ class SpotifySkill(MycroftSkill):
 
             # No playing device found, use the local Spotify instance
             dev = self.device_by_name(self.device_name)
+            # if not check if a desktop spotify client is playing
             if not dev:
                 dev = self.device_by_name(gethostname())
+            # use first best device if none of the prioritized works
+            if not dev and len(self.devices) > 0:
+                dev = self.devices[0]
             if dev and not dev['is_active']:
                 self.spotify.transfer_playback(dev["id"], False)
             return dev
@@ -743,6 +755,7 @@ class SpotifySkill(MycroftSkill):
 
     def shutdown(self):
         """ Remove the monitor at shutdown. """
+        self.cancel_scheduled_event('SpotifyLogin')
         self.stop_monitor()
         self.stop_librespot()
 
