@@ -21,7 +21,9 @@ Otherwise it begins playing the music locally using the Mycroft-controlled
 hardware.  (Which, depending on the audio setup, might not be the main
 speaker on the equipment.)
 """
+from pprint import pformat
 
+import re
 from mycroft.skills.core import MycroftSkill, intent_handler, \
                                 intent_file_handler
 import mycroft.client.enclosure.display_manager as DisplayManager
@@ -395,18 +397,20 @@ class SpotifySkill(MycroftSkill):
 
     def create_intents(self):
         """ Create intents for start playback handlers."""
-        # play playlists
-        self.register_intent_file('Play.intent', self.play_playlist)
-        self.register_intent_file('PlayOn.intent', self.play_playlist_on)
+        self.register_intent_file('PlayAlbum.intent', self.play_album)
+        self.register_intent_file('PlaySong.intent', self.play_song)
 
-        # play album
-        intent = IntentBuilder('').require('Play').require('AlbumTitle') \
-                                  .optionally('Spotify')
-        self.register_intent(intent, self.play_album)
-        # play artist
-        intent = IntentBuilder('').require('Play').require('Artist') \
-                                  .optionally('Spotify')
-        self.register_intent(intent, self.play_artist)
+        # play playlists
+        # self.register_intent_file('Play.intent', self.play_playlist)
+        # self.register_intent_file('PlayOn.intent', self.play_playlist_on)
+
+#        play_intent = IntentBuilder("PlayIntent"). \
+#            require("PlayKeyword"). \
+#            require("Keyword"). \
+#            optionally("SongKeyword"). \
+#            optionally("AlbumKeyword"). \
+#            build()
+#        self.register_intent(play_intent, self.play_intent)
 
     @property
     def playlists(self):
@@ -487,6 +491,40 @@ class SpotifySkill(MycroftSkill):
             return key
         else:
             return None
+
+    def play_song(self, message):
+        song = message.data.get('track')
+        artist = message.data.get('artist')
+        album = message.data.get('album')
+        query = song
+        LOG.info("I've been asked to play a particular song.")
+        LOG.info("\tI think the song is: " + song)
+        if artist:
+            query += " artist:" + artist
+            LOG.info("\tI also think the artist is: " + artist)
+
+        if album:
+            query +=" album:" + album
+            LOG.info("\tI also think the album is: " + album)
+
+        LOG.info("The query I want to send to Spotify is: '" + query + "'")
+        res = self.spotify.search(query, type='track')
+        self.play(data=res, type='track')
+
+    def play_album(self, message):
+        album = message.data.get('album')
+        artist = message.data.get('artist')
+        query = album
+        LOG.info("I've been asked to play a particular album.")
+        LOG.info("\tI think the album is: " + album)
+        if artist:
+            query += " artist:" + artist
+            LOG.info("\tI also think the artist is: " + artist)
+
+        LOG.info("The query I want to send to Spotify is: '" + query + "'")
+        res = self.spotify.search(query, type='album')
+        self.play(data=res, type='album')
+
 
     def play_playlist(self, message):
         """ Play user playlist on default device. """
@@ -570,35 +608,46 @@ class SpotifySkill(MycroftSkill):
                     self.spotify.transfer_playback(dev["id"], False)
                 self.start_playback(dev, playlist)
 
-    @intent_file_handler('PlaySpotify.intent')
-    def continue_current_playlist(self, message):
-        if self.playback_prerequisits_ok():
-            dev = self.get_default_device()
-            if dev:
-                self.spotify_play(dev['id'])
-            else:
-                self.speak_dialog('NoDevicesAvailable')
+#    @intent_file_handler('PlaySpotify.intent')
+#    def continue_current_playlist(self, message):
+#        if self.playback_prerequisits_ok():
+#            dev = self.get_default_device()
+#            if dev:
+#                self.spotify_play(dev['id'])
+#            else:
+#                self.speak_dialog('NoDevicesAvailable')
 
-    @intent_handler(IntentBuilder('').require('Search').
-                    require('AlbumTitle').require('Spotify'))
-    def search_album(self, message):
-        if self.playback_prerequisits_ok():
-            return self.search(message.data['AlbumTitle'], 'album')
+    def play(self, data, type='track'):
+        """
 
-    def play_album(self, message):
-        if self.playback_prerequisits_ok():
-            return self.search(message.data['AlbumTitle'], 'album')
-
-    def play_artist(self, message):
-        if self.playback_prerequisits_ok():
-            return self.search(message.data['Artist'], 'artist')
+        :param data: data returned by self.search_spotify
+        :param type: the type of data. 'track' or 'album' are currently supported
+        """
+        dev = self.get_default_device()
+        if dev is None:
+            LOG.error("Unable to get a default device while trying to play something.")
+            self.speak_dialog('NoDevicesAvailable')
+        else:
+            try:
+                if type is 'track':
+                    song = data['tracks']['items'][0]
+                    self.speak_dialog('listening_to_song_by', data={'tracks': song['name'], 'artist': song['artists'][0]['name']})
+                    time.sleep(2)
+                    self.spotify_play(dev['id'], uris=[song['uri']])
+                elif type is 'album':
+                    album = data['albums']['items'][0]
+                    self.speak_dialog('listening_to_album_by', data={'album': album['name'], 'artist': album['artists'][0]['name']})
+                    time.sleep(2)
+                    self.spotify_play(dev['id'], context_uri=album['uri'])
+            except Exception as e:
+                LOG.error("Unable to obtain the name, artist, and/or URI information while asked to play something. " + str(e))
 
     def search(self, query, search_type):
         """ Search for an album, playlist or artist.
         Arguments:
             query:       search query (album title, artist, etc.)
-            search_type: weather to search for an 'album', 'artist' or
-                         'playlist'
+            search_type: weather to search for an 'album', 'artist',
+                         'playlist', or 'track'
 
             TODO: improve results of albums by checking artist
         """
@@ -621,17 +670,23 @@ class SpotifySkill(MycroftSkill):
                 res = album
         elif search_type == 'artist':
             LOG.info(result['artists'])
-            artist = result['artists']['items'][0]
-            LOG.info(artist)
-            res = artist
+            if len(result['artists']['items']) > 0:
+                artist = result['artists']['items'][0]
+                LOG.info(artist)
+                res = artist
+        elif search_type == 'track':
+            LOG.info("TODO: TRACK SEARCH!")
         else:
             LOG.info('ERROR')
             return
 
-        self.speak_dialog('listening_to',
-                          data={'tracks': res['name']})
-        time.sleep(2)
-        self.spotify_play(dev['id'], context_uri=res['uri'])
+        #if res:
+        #    self.speak_dialog('listening_to', data={'tracks': res['name']})
+        #    time.sleep(2)
+        #    self.spotify_play(dev['id'], context_uri=res['uri'])
+        #else:
+        #    self.speak_dialog('NoResults')
+        return res
 
     def __pause(self):
         # if authorized and playback was started by the skill
