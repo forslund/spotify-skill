@@ -41,6 +41,7 @@ from socket import gethostname
 
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
+import random
 
 
 def get_token(dev_cred):
@@ -397,6 +398,7 @@ class SpotifySkill(MycroftSkill):
 
     def create_intents(self):
         """ Create intents for start playback handlers."""
+        self.register_intent_file('PlaySomeMusic.intent', self.play_something)
         self.register_intent_file('PlayAlbum.intent', self.play_album)
         self.register_intent_file('PlaySong.intent', self.play_song)
 
@@ -485,9 +487,26 @@ class SpotifySkill(MycroftSkill):
             return None
 
     def play_song(self, message):
+        """
+        When the user wants to hear a song, optionally with artist and/or album information attached
+        play the song <song>
+        play the song <song> by <artist>
+        play the song <song> off <album>
+        play <song> by <artist> off the album <album>
+        etc.
+        :param message: the utterance as interpreted by Padatious
+        """
         song = message.data.get('track')
         artist = message.data.get('artist')
         album = message.data.get('album')
+        # workaround for Padatious training:
+        if song and not album:
+            m = re.match(r'^play (some |a )?(something|music|track)( by ([\w\s]+?))?$', message.data['utterance'], re.M|re.I)
+            if m:
+                LOG.info("I'm in the play_song handler but I think I'm actually being asked to play something indeterminate. Switching handlers.")
+                self.play_something(message)
+                return
+
         query = song
         LOG.info("I've been asked to play a particular song.")
         LOG.info("\tI think the song is: " + song)
@@ -504,6 +523,11 @@ class SpotifySkill(MycroftSkill):
         self.play(data=res, type='track')
 
     def play_album(self, message):
+        """
+        When the user wants to hear an album, optionally with artist informaiton attached
+        "Play the album <album> by <artist>
+        :param message: the utterance as interpreted by Padatious
+        """
         album = message.data.get('album')
         artist = message.data.get('artist')
         query = album
@@ -516,6 +540,28 @@ class SpotifySkill(MycroftSkill):
         LOG.info("The query I want to send to Spotify is: '" + query + "'")
         res = self.spotify.search(query, type='album')
         self.play(data=res, type='album')
+
+    def play_something(self, message):
+        """
+        When the user wants to hear something (optionally by an artist), but they don't know what
+        play something
+        play something by <artist>
+        :param message: the utterance as interpreted by Padatious
+        """
+        LOG.info("I've been asked to play pretty much anything.")
+        artist = message.data.get('artist')
+        genres = ["rap", "dance", "pop", "hip hop", "rock", "trap", "classic rock", "metal", "edm", "techno", "house"]
+        query = ""
+        if artist:
+            LOG.info("\tBut it has to be by " + artist)
+            query = "artist:" + artist
+        else:
+            genre = random.choice(genres)
+            LOG.info("\tI'm going to pick the genre " + genre)
+            query = "genre:" + genre
+            res = self.spotify.search(query, type='track')
+            LOG.info("\tgot results")
+            self.play(data=res, type='genre', genreName = genre)
 
 
     def play_playlist(self, message):
@@ -609,11 +655,12 @@ class SpotifySkill(MycroftSkill):
 #            else:
 #                self.speak_dialog('NoDevicesAvailable')
 
-    def play(self, data, type='track'):
+    def play(self, data, type='track', genreName=None):
         """
 
         :param data: data returned by self.search_spotify
-        :param type: the type of data. 'track' or 'album' are currently supported
+        :param type: the type of data. 'track', 'album', or 'genre' are currently supported
+        :param genreName: if type is 'genre', also include the genre's name here, for output purposes
         """
         dev = self.get_default_device()
         if dev is None:
@@ -629,8 +676,18 @@ class SpotifySkill(MycroftSkill):
                 elif type is 'album':
                     album = data['albums']['items'][0]
                     self.speak_dialog('listening_to_album_by', data={'album': album['name'], 'artist': album['artists'][0]['name']})
+                    self.speak_dialog('listening_to_album_by', data={'album': album['name'], 'artist': album['artists'][0]['name']})
                     time.sleep(2)
                     self.spotify_play(dev['id'], context_uri=album['uri'])
+                elif type is 'genre':
+                    items = data['tracks']['items']
+                    random.shuffle(items)
+                    uris = []
+                    for item in items:
+                        uris.append(item['uri'])
+                    self.speak_dialog('listening_to_genre', data={'genre': genreName, 'track': items[0]['name'], 'artist': items[0]['artists'][0]['name']})
+                    time.sleep(2)
+                    self.spotify_play(dev['id'], uris=uris)
             except Exception as e:
                 LOG.error("Unable to obtain the name, artist, and/or URI information while asked to play something. " + str(e))
 
@@ -639,7 +696,7 @@ class SpotifySkill(MycroftSkill):
         Arguments:
             query:       search query (album title, artist, etc.)
             search_type: weather to search for an 'album', 'artist',
-                         'playlist', or 'track'
+                         'playlist', 'track', or 'genre'
 
             TODO: improve results of albums by checking artist
         """
@@ -666,8 +723,8 @@ class SpotifySkill(MycroftSkill):
                 artist = result['artists']['items'][0]
                 LOG.info(artist)
                 res = artist
-        elif search_type == 'track':
-            LOG.info("TODO: TRACK SEARCH!")
+        elif search_type == 'genre':
+            LOG.info("TODO! Genre")
         else:
             LOG.info('ERROR')
             return
