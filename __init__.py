@@ -555,12 +555,13 @@ class SpotifySkill(MycroftSkill):
         if artist:
             LOG.info("\tBut it has to be by " + artist)
             query = "artist:" + artist
+            res = self.spotify.search(query, type='track')
+            self.play(data=res, type='track')
         else:
             genre = random.choice(genres)
             LOG.info("\tI'm going to pick the genre " + genre)
             query = "genre:" + genre
             res = self.spotify.search(query, type='track')
-            LOG.info("\tgot results")
             self.play(data=res, type='genre', genreName = genre)
 
 
