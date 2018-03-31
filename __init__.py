@@ -401,16 +401,8 @@ class SpotifySkill(MycroftSkill):
         self.register_intent_file('PlaySong.intent', self.play_song)
 
         # play playlists
-        # self.register_intent_file('Play.intent', self.play_playlist)
-        # self.register_intent_file('PlayOn.intent', self.play_playlist_on)
-
-#        play_intent = IntentBuilder("PlayIntent"). \
-#            require("PlayKeyword"). \
-#            require("Keyword"). \
-#            optionally("SongKeyword"). \
-#            optionally("AlbumKeyword"). \
-#            build()
-#        self.register_intent(play_intent, self.play_intent)
+        self.register_intent_file('Play.intent', self.play_playlist)
+        self.register_intent_file('PlayOn.intent', self.play_playlist_on)
 
     @property
     def playlists(self):
