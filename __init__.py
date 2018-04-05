@@ -677,7 +677,6 @@ class SpotifySkill(MycroftSkill):
                 elif type is 'album':
                     album = data['albums']['items'][0]
                     self.speak_dialog('listening_to_album_by', data={'album': album['name'], 'artist': album['artists'][0]['name']})
-                    self.speak_dialog('listening_to_album_by', data={'album': album['name'], 'artist': album['artists'][0]['name']})
                     time.sleep(2)
                     self.spotify_play(dev['id'], context_uri=album['uri'])
                 elif type is 'genre':
