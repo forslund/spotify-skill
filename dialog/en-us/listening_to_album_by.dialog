@@ -1,2 +1,2 @@
-Listening to the album {{album}} by {{artist}}.
-Now playing the album {{album}} by {{artist}}.
+Listening to {{album}} by {{artist}}.
+Now playing {{album}} by {{artist}}.
