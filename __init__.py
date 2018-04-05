@@ -494,7 +494,9 @@ class SpotifySkill(MycroftSkill):
         play the song <song> off <album>
         play <song> by <artist> off the album <album>
         etc.
-        :param message: the utterance as interpreted by Padatious
+
+        Args:
+            message (Dict): The utterance as interpreted by Padatious
         """
         song = message.data.get('track')
         artist = message.data.get('artist')
@@ -525,8 +527,10 @@ class SpotifySkill(MycroftSkill):
     def play_album(self, message):
         """
         When the user wants to hear an album, optionally with artist informaiton attached
-        "Play the album <album> by <artist>
-        :param message: the utterance as interpreted by Padatious
+        Play the album <album> by <artist>
+
+        Args:
+            message (Dict): The utterance as interpreted by Padatious
         """
         album = message.data.get('album')
         artist = message.data.get('artist')
@@ -546,7 +550,9 @@ class SpotifySkill(MycroftSkill):
         When the user wants to hear something (optionally by an artist), but they don't know what
         play something
         play something by <artist>
-        :param message: the utterance as interpreted by Padatious
+
+        Args:
+            message (Dict): The utterance as interpreted by Padatious
         """
         LOG.info("I've been asked to play pretty much anything.")
         artist = message.data.get('artist')
@@ -647,21 +653,19 @@ class SpotifySkill(MycroftSkill):
                     self.spotify.transfer_playback(dev["id"], False)
                 self.start_playback(dev, playlist)
 
-#    @intent_file_handler('PlaySpotify.intent')
-#    def continue_current_playlist(self, message):
-#        if self.playback_prerequisits_ok():
-#            dev = self.get_default_device()
-#            if dev:
-#                self.spotify_play(dev['id'])
-#            else:
-#                self.speak_dialog('NoDevicesAvailable')
-
     def play(self, data, type='track', genreName=None):
         """
+        Plays the provided data in the manner appropriate for 'type'
+        If the type is 'genre' then genreType should be specified to populate the output dialog
 
-        :param data: data returned by self.search_spotify
-        :param type: the type of data. 'track', 'album', or 'genre' are currently supported
-        :param genreName: if type is 'genre', also include the genre's name here, for output purposes
+        A 'track' is played as just an indidivdual track
+        An 'album' queues up all the tracks contained in that album and starts with the first track
+        A 'genre' expects data returned from self.spotify.search, and will use that genre to play a selection similar to it
+
+        Args:
+            data (Dict):        Data returned by self.spotify.search
+            type (String):      The type of data. 'track', 'album', or 'genre' are currently supported
+            genreName (String): If type is 'genre', also include the genre's name here, for output purposes
         """
         dev = self.get_default_device()
         if dev is None:
