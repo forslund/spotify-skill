@@ -522,7 +522,7 @@ class SpotifySkill(MycroftSkill):
 
         LOG.info("The query I want to send to Spotify is: '" + query + "'")
         res = self.spotify.search(query, type='track')
-        self.play(data=res, type='track')
+        self.play(data=res, data_type='track')
 
     def play_album(self, message):
         """
@@ -543,7 +543,7 @@ class SpotifySkill(MycroftSkill):
 
         LOG.info("The query I want to send to Spotify is: '" + query + "'")
         res = self.spotify.search(query, type='album')
-        self.play(data=res, type='album')
+        self.play(data=res, data_type='album')
 
     def play_something(self, message):
         """
@@ -562,13 +562,13 @@ class SpotifySkill(MycroftSkill):
             LOG.info("\tBut it has to be by " + artist)
             query = "artist:" + artist
             res = self.spotify.search(query, type='track')
-            self.play(data=res, type='track')
+            self.play(data=res, data_type='track')
         else:
             genre = random.choice(genres)
             LOG.info("\tI'm going to pick the genre " + genre)
             query = "genre:" + genre
             res = self.spotify.search(query, type='track')
-            self.play(data=res, type='genre', genreName = genre)
+            self.play(data=res, data_type='genre', genre_name = genre)
 
 
     def play_playlist(self, message):
@@ -653,19 +653,19 @@ class SpotifySkill(MycroftSkill):
                     self.spotify.transfer_playback(dev["id"], False)
                 self.start_playback(dev, playlist)
 
-    def play(self, data, type='track', genreName=None):
+    def play(self, data, data_type='track', genre_name=None):
         """
-        Plays the provided data in the manner appropriate for 'type'
-        If the type is 'genre' then genreType should be specified to populate the output dialog
+        Plays the provided data in the manner appropriate for 'data_type'
+        If the type is 'genre' then genre_name should be specified to populate the output dialog
 
-        A 'track' is played as just an indidivdual track
+        A 'track' is played as just an individual track
         An 'album' queues up all the tracks contained in that album and starts with the first track
         A 'genre' expects data returned from self.spotify.search, and will use that genre to play a selection similar to it
 
         Args:
             data (Dict):        Data returned by self.spotify.search
-            type (String):      The type of data. 'track', 'album', or 'genre' are currently supported
-            genreName (String): If type is 'genre', also include the genre's name here, for output purposes
+            data_type (String):      The type of data contained in the passed-in object. 'track', 'album', or 'genre' are currently supported
+            genre_name (String): If type is 'genre', also include the genre's name here, for output purposes
         """
         dev = self.get_default_device()
         if dev is None:
@@ -673,23 +673,23 @@ class SpotifySkill(MycroftSkill):
             self.speak_dialog('NoDevicesAvailable')
         else:
             try:
-                if type is 'track':
+                if data_type is 'track':
                     song = data['tracks']['items'][0]
                     self.speak_dialog('listening_to_song_by', data={'tracks': song['name'], 'artist': song['artists'][0]['name']})
                     time.sleep(2)
                     self.spotify_play(dev['id'], uris=[song['uri']])
-                elif type is 'album':
+                elif data_type is 'album':
                     album = data['albums']['items'][0]
                     self.speak_dialog('listening_to_album_by', data={'album': album['name'], 'artist': album['artists'][0]['name']})
                     time.sleep(2)
                     self.spotify_play(dev['id'], context_uri=album['uri'])
-                elif type is 'genre':
+                elif data_type is 'genre':
                     items = data['tracks']['items']
                     random.shuffle(items)
                     uris = []
                     for item in items:
                         uris.append(item['uri'])
-                    self.speak_dialog('listening_to_genre', data={'genre': genreName, 'track': items[0]['name'], 'artist': items[0]['artists'][0]['name']})
+                    self.speak_dialog('listening_to_genre', data={'genre': genre_name, 'track': items[0]['name'], 'artist': items[0]['artists'][0]['name']})
                     time.sleep(2)
                     self.spotify_play(dev['id'], uris=uris)
             except Exception as e:
