@@ -56,6 +56,8 @@ def get_token(dev_cred):
     except HTTPError as e:
         if e.response.status_code == 404:  # Token doesn't exist
             raise
+        if e.response.status_code == 401:  # Device isn't paired
+            raise
         else:
             retry = True
     if retry:
@@ -281,7 +283,10 @@ class SpotifySkill(MycroftSkill):
         self.on_websettings_changed()
 
     def on_websettings_changed(self):
-        if not self.spotify:
+
+        # Only attempt to load credentials if the username has been set
+        # will limit the accesses to the api.
+        if not self.spotify and self.settings.get('user', None):
             try:
                 self.load_credentials()
             except Exception:
@@ -407,6 +412,8 @@ class SpotifySkill(MycroftSkill):
     @property
     def playlists(self):
         """ Playlists, cached for 5 minutes """
+        if not self.spotify:
+            return []  # No connection, no playlists
         now = time.time()
         if not self._playlists or (now - self.__playlists_fetched > 5 * 60):
             self._playlists = {}
@@ -419,6 +426,8 @@ class SpotifySkill(MycroftSkill):
     @property
     def devices(self):
         """ Devices, cached for 60 seconds """
+        if not self.spotify:
+            return []  # No connection, no devices
         now = time.time()
         if not self.__device_list or (now - self.__devices_fetched > 60):
             self.__device_list = self.spotify.get_devices()
@@ -438,7 +447,9 @@ class SpotifySkill(MycroftSkill):
             # Otherwise get a device with the selected name
             devices_by_name = {d['name']: d for d in devices}
             key, confidence = match_one(name, devices_by_name.keys())
-            return devices_by_name[key]
+            if confidence > 0.5:
+                return devices_by_name[key]
+        return None
 
     def get_default_device(self):
         """ Get preferred playback device """
@@ -452,8 +463,12 @@ class SpotifySkill(MycroftSkill):
 
             # No playing device found, use the local Spotify instance
             dev = self.device_by_name(self.device_name)
+            # if not check if a desktop spotify client is playing
             if not dev:
                 dev = self.device_by_name(gethostname())
+            # use first best device if none of the prioritized works
+            if not dev and len(self.devices) > 0:
+                dev = self.devices[0]
             if dev and not dev['is_active']:
                 self.spotify.transfer_playback(dev['id'], False)
             return dev
@@ -701,6 +716,10 @@ class SpotifySkill(MycroftSkill):
             TODO: improve results of albums by checking artist
         """
         dev = self.get_default_device()
+        if not dev:
+            self.speak_dialog('NoDefaultDeviceAvailable')
+            return
+
         res = None
         if search_type == 'album' and len(query.split('by')) > 1:
             title, artist = query.split('by')
@@ -855,6 +874,7 @@ class SpotifySkill(MycroftSkill):
 
     def shutdown(self):
         """ Remove the monitor at shutdown. """
+        self.cancel_scheduled_event('SpotifyLogin')
         self.stop_monitor()
         self.stop_librespot()
 
