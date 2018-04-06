@@ -30,6 +30,7 @@ import mycroft.client.enclosure.display_manager as DisplayManager
 from mycroft.util.parse import match_one
 from mycroft.util.log import LOG
 from mycroft.api import DeviceApi
+from padatious import IntentContainer
 from requests import HTTPError
 from adapt.intent import IntentBuilder
 
@@ -393,15 +394,16 @@ class SpotifySkill(MycroftSkill):
     # Intent handling
 
     def create_intents(self):
-        """ Create intents for start playback handlers."""
+        # Create intents for start playback handlers.
         self.register_intent_file('PlaySomeMusic.intent', self.play_something)
         self.register_intent_file('PlayAlbum.intent', self.play_album)
         self.register_intent_file('PlaySong.intent', self.play_song)
 
-        # play playlists
-        self.register_intent_file('Play.intent', self.play_playlist)
-        self.register_intent_file('PlayOn.intent', self.play_playlist_on)
+        # Play playlists
+        self.register_intent_file('PlayPlaylist.intent', self.play_playlist)
 
+        # TODO: REGRESSION: handling devices for all the above playing scenarios is going to require a second layer of logic for each one
+        #self.register_intent_file('PlayOn.intent', self.play_playlist_on)
     @property
     def playlists(self):
         """ Playlists, cached for 5 minutes """
@@ -487,13 +489,22 @@ class SpotifySkill(MycroftSkill):
         song = message.data.get('track')
         artist = message.data.get('artist')
         album = message.data.get('album')
-        # workaround for Padatious training:
+
+        # workaround for Padatious training, as the most generic "play {track}" is taking precedence over the play_something
+        # and play_playlist rules
         if song and not album:
+            m = re.match(r'^play( the| my)? playlist (?P<playlist>[\w\s]+?)$' , message.data['utterance'], re.M|re.I)
+            if m:
+                LOG.info("I'm in the play_song handler but I've seen an utterance that contains 'playlist.' I want to play the playlist " + m.group(1) + ". Switching handlers.")
+                message.data['playlist'] = m.group('playlist')
+                self.play_playlist(message)
+                return
             m = re.match(r'^play (some |a )?(something|music|track)( by ([\w\s]+?))?$', message.data['utterance'], re.M|re.I)
             if m:
                 LOG.info("I'm in the play_song handler but I think I'm actually being asked to play something indeterminate. Switching handlers.")
                 self.play_something(message)
                 return
+
 
         query = song
         LOG.info("I've been asked to play a particular song.")
@@ -564,7 +575,7 @@ class SpotifySkill(MycroftSkill):
             self.continue_current_playlist(message)
         elif self.playback_prerequisits_ok():
             dev = self.get_default_device()
-            self.start_playback(dev, self.get_best_playlist(playlist))
+            self.start_playlist_playback(dev, self.get_best_playlist(playlist))
 
     def playback_prerequisits_ok(self):
         """ Check that playback is possible, launch client if neccessary. """
@@ -600,7 +611,7 @@ class SpotifySkill(MycroftSkill):
             LOG.exception(e)
             self.speak_dialog('NotAuthorized')
 
-    def start_playback(self, dev, playlist_name):
+    def start_playlist_playback(self, dev, playlist_name):
         LOG.info(u'Playlist: {}'.format(playlist_name))
         
         playlist = None
@@ -614,11 +625,10 @@ class SpotifySkill(MycroftSkill):
             
         if dev and playlist:
             LOG.info(u'playing {} using {}'.format(playlist, dev['name']))
-            self.speak_dialog('listening_to', data={'tracks': playlist})
+            self.speak_dialog('listening_to_playlist', data={'playlist': playlist})
             time.sleep(2)
             pl = self.playlists[playlist]
-            tracks = self.spotify.user_playlist_tracks(pl['owner']['id'],
-                                                       pl['id'])
+            tracks = self.spotify.user_playlist_tracks(pl['owner']['id'], pl['id'])
             uris = [t['track']['uri'] for t in tracks['items']]
             self.spotify_play(dev['id'], uris=uris)
             # self.show_notes()
@@ -637,7 +647,7 @@ class SpotifySkill(MycroftSkill):
                 # transfer playback to it.
                 if not dev['is_active']:
                     self.spotify.transfer_playback(dev["id"], False)
-                self.start_playback(dev, playlist)
+                self.start_playlist_playback(dev, playlist)
 
     def play(self, data, data_type='track', genre_name=None):
         """
