@@ -120,12 +120,12 @@ class SpotifyConnect(spotipy.Spotify):
         """
         try:
             status = self.status()
-            if not status["is_playing"] or device is None:
-                return status["is_playing"]
+            if not status['is_playing'] or device is None:
+                return status['is_playing']
 
             # Verify it is playing on the given device
             dev = self.get_device(device)
-            return dev and dev["is_active"]
+            return dev and dev['is_active']
         except:
             # Technically a 204 return from status() request means 'no track'
             return False  # assume not playing
@@ -142,7 +142,7 @@ class SpotifyConnect(spotipy.Spotify):
             'play': force_play
         }
         try:
-            return self._put("me/player", payload=data)
+            return self._put('me/player', payload=data)
         except Exception as e:
             LOG.error(e)
 
@@ -245,7 +245,7 @@ class SpotifySkill(MycroftSkill):
         """ Launch the librespot binary for the Mark-1.
         TODO: Discovery mode
         """
-        platform = self.config_core.get("enclosure").get("platform", "unknown")
+        platform = self.config_core.get('enclosure').get('platform', 'unknown')
         path = self.settings.get('librespot_path', None)
         if platform == 'mycroft_mark_1' and not path:
             path = 'librespot'
@@ -337,7 +337,7 @@ class SpotifySkill(MycroftSkill):
             return
 
         active = DisplayManager.get_active()
-        if not active == '' or active == "SpotifySkill":
+        if not active == '' or active == 'SpotifySkill':
             # No activity, start to fall asleep
             self.idle_count += 1
 
@@ -380,11 +380,11 @@ class SpotifySkill(MycroftSkill):
 
         # Get the current track info
         try:
-            text = status["item"]["artists"][0]["name"] + ": "
+            text = status['item']['artists'][0]['name'] + ': '
         except:
             text = ""
         try:
-            text += status["item"]["name"]
+            text += status['item']['name']
         except:
             pass
 
@@ -467,7 +467,7 @@ class SpotifySkill(MycroftSkill):
             if not dev and len(self.devices) > 0:
                 dev = self.devices[0]
             if dev and not dev['is_active']:
-                self.spotify.transfer_playback(dev["id"], False)
+                self.spotify.transfer_playback(dev['id'], False)
             return dev
 
         return None
@@ -513,11 +513,11 @@ class SpotifySkill(MycroftSkill):
         LOG.info("I've been asked to play a particular song.")
         LOG.info("\tI think the song is: " + song)
         if artist:
-            query += " artist:" + artist
+            query += ' artist:' + artist
             LOG.info("\tI also think the artist is: " + artist)
 
         if album:
-            query +=" album:" + album
+            query += ' album:' + album
             LOG.info("\tI also think the album is: " + album)
 
         LOG.info("The query I want to send to Spotify is: '" + query + "'")
@@ -538,7 +538,7 @@ class SpotifySkill(MycroftSkill):
         LOG.info("I've been asked to play a particular album.")
         LOG.info("\tI think the album is: " + album)
         if artist:
-            query += " artist:" + artist
+            query += ' artist:' + artist
             LOG.info("\tI also think the artist is: " + artist)
 
         LOG.info("The query I want to send to Spotify is: '" + query + "'")
@@ -556,17 +556,17 @@ class SpotifySkill(MycroftSkill):
         """
         LOG.info("I've been asked to play pretty much anything.")
         artist = message.data.get('artist')
-        genres = ["rap", "dance", "pop", "hip hop", "rock", "trap", "classic rock", "metal", "edm", "techno", "house"]
-        query = ""
+        genres = ['rap', 'dance', 'pop', 'hip hop', 'rock', 'trap', 'classic rock', 'metal', 'edm', 'techno', 'house']
+        query = ''
         if artist:
             LOG.info("\tBut it has to be by " + artist)
-            query = "artist:" + artist
+            query = 'artist:' + artist
             res = self.spotify.search(query, type='track')
             self.play(data=res, data_type='track')
         else:
             genre = random.choice(genres)
             LOG.info("\tI'm going to pick the genre " + genre)
-            query = "genre:" + genre
+            query = 'genre:' + genre
             res = self.spotify.search(query, type='track')
             self.play(data=res, data_type='genre', genre_name = genre)
 
@@ -597,7 +597,7 @@ class SpotifySkill(MycroftSkill):
             message.data['utterance'] = 'play spotify'  # play anything!
             self.play_playlist(message)
         else:
-            self.speak_dialog("NotAuthorized")
+            self.speak_dialog('NotAuthorized')
 
     def spotify_play(self, dev_id, uris=None, context_uri=None):
         """ Start spotify playback and catch any exceptions. """
@@ -787,8 +787,8 @@ class SpotifySkill(MycroftSkill):
                 self.speak(devices[0])
             elif len(devices) > 1:
                 self.speak_dialog('AvailableDevices',
-                                  {"devices": '. '.join(devices[:-1]) + ". " +
-                                              self.translate("And") + ". " +
+                                  {'devices': '. '.join(devices[:-1]) + '. ' +
+                                              self.translate('And') + '. ' +
                                               devices[-1]})
             else:
                 self.speak_dialog('NoDevicesAvailable')
