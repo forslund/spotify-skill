@@ -591,6 +591,14 @@ class SpotifySkill(MycroftSkill):
             dev = self.get_default_device()
             self.start_playlist_playback(dev, self.get_best_playlist(playlist))
 
+    def continue_current_playlist(self, message):
+        if self.playback_prerequisits_ok():
+            dev = self.get_default_device()
+            if dev:
+                self.spotify_play(dev['id'])
+            else:
+                self.speak_dialog('NoDevicesAvailable')
+
     def playback_prerequisits_ok(self):
         """ Check that playback is possible, launch client if neccessary. """
         if self.spotify is None:
