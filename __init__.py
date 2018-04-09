@@ -572,8 +572,8 @@ class SpotifySkill(MycroftSkill):
         if artist:
             LOG.info("\tBut it has to be by " + artist)
             query = 'artist:' + artist
-            res = self.spotify.search(query, type='track')
-            self.play(data=res, data_type='track')
+            res = self.spotify.search(query, type='artist')
+            self.play(data=res, data_type='artist')
         else:
             genre = random.choice(genres)
             LOG.info("\tI'm going to pick the genre " + genre)
@@ -688,6 +688,12 @@ class SpotifySkill(MycroftSkill):
                     self.speak_dialog('listening_to_song_by', data={'tracks': song['name'], 'artist': song['artists'][0]['name']})
                     time.sleep(2)
                     self.spotify_play(dev['id'], uris=[song['uri']])
+                elif data_type is 'artist':
+                    artist = data['artists']['items'][0]
+                    self.speak_dialog('listening_to_artist',
+                                      data={'artist': artist['name']})
+                    time.sleep(2)
+                    self.spotify_play(dev['id'], context_uri=artist['uri'])
                 elif data_type is 'album':
                     album = data['albums']['items'][0]
                     self.speak_dialog('listening_to_album_by', data={'album': album['name'], 'artist': album['artists'][0]['name']})
