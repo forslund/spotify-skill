@@ -504,21 +504,31 @@ class SpotifySkill(MycroftSkill):
         artist = message.data.get('artist')
         album = message.data.get('album')
 
-        # workaround for Padatious training, as the most generic "play {track}" is taking precedence over the play_something
-        # and play_playlist rules
+        # workaround for Padatious training, as the most generic "play {track}"
+        # is taking precedence over the play_something and play_playlist rules
         if song and not album:
-            m = re.match(r'^play( the| my)? playlist (?P<playlist>[\w\s]+?)$' , message.data['utterance'], re.M|re.I)
+            if song == 'spotify':
+                self.continue_current_playlist(message)
+                return
+            LOG.info(self.translate('playlist_regex'))
+            m = re.match(self.translate('playlist_regex'),
+                         message.data['utterance'], re.M | re.I)
             if m:
-                LOG.info("I'm in the play_song handler but I've seen an utterance that contains 'playlist.' I want to play the playlist " + m.group(1) + ". Switching handlers.")
+                LOG.debug('I\'m in the play_song handler but I\'ve seen'
+                          ' an utterance that contains \'playlist.\''
+                          ' I want to play the playlist ' + m.group(1) +
+                          '. Switching handlers.')
                 message.data['playlist'] = m.group('playlist')
                 self.play_playlist(message)
                 return
-            m = re.match(r'^play (some |a )?(something|music|track)( by ([\w\s]+?))?$', message.data['utterance'], re.M|re.I)
+            m = re.match(self.translate('something_regex'),
+                         message.data['utterance'], re.M | re.I)
             if m:
-                LOG.info("I'm in the play_song handler but I think I'm actually being asked to play something indeterminate. Switching handlers.")
+                LOG.info('I\'m in the play_song handler but I think I\'m'
+                         ' actually being asked to play something '
+                         'indeterminate. Switching handlers.')
                 self.play_something(message)
                 return
-
 
         query = song
         LOG.info("I've been asked to play a particular song.")
