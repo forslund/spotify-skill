@@ -1,0 +1,34 @@
+play {track}( by {artist}|) (off|from)( the album|the vinyl| the record|) {album}
+play {track} (by|from) (the band|the group|the musician|the duo|the artist|){artist}
+play {track} (off|from)( the album|the vinyl| the record|) {album} (by|from){artist}
+play the (song|piece|track|composition)( called| named|) {track}( by {artist}|) (off|from)( the album| the vinyl| the record|) {album}
+play {track}( by {artist}|)
+
+//play holy mountain
+//play the song holy mountain
+//play the song holy mountain by sleep
+//play holy mountain by the band sleep
+//play holy mountain by the band called sleep
+//play holy mountain by the group sleep
+//play holy mountain by the group called sleep
+//play holy mountain off holy mountain
+//play holy mountain by sleep from holy mountain
+//play holy mountain off the album holy mountain
+//
+//FAILING:
+//
+//play holy mountain by sleep from called holy mountain
+//play holy mountain from the album called holy mountain
+//play holy mountain by the band sleep from called holy mountain
+//play the song called holy mountain by the band called sleep
+//play the song called holy mountain by sleep
+//play holy mountain by the band called sleep from called holy mountain
+//play the song called holy mountain off the album named holy mountain
+//play the song named holy mountain from holy mountain
+//play the song named holy mountain from named holy mountain
+//play the song named holy mountain by sleep off the album named holy mountain
+//play the song named holy mountain by sleep off the album holy mountain
+//play the song holy mountain by the musicians sleep
+//play the song holy mountain by the musicians named sleep
+//play the song called holy mountain by the musicians sleep
+//play the song called holy mountain by the musicians called sleep
