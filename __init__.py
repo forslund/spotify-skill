@@ -510,7 +510,13 @@ class SpotifySkill(MycroftSkill):
             if song == 'spotify':
                 self.continue_current_playlist(message)
                 return
-            LOG.info(self.translate('playlist_regex'))
+            m = re.match(self.translate('something_regex'),
+                         message.data['utterance'], re.M | re.I)
+            if m:
+                LOG.debug('play something detected, switching handler')
+                self.play_something(message)
+                return
+
             m = re.match(self.translate('playlist_regex'),
                          message.data['utterance'], re.M | re.I)
             if m:
@@ -520,14 +526,6 @@ class SpotifySkill(MycroftSkill):
                           '. Switching handlers.')
                 message.data['playlist'] = m.group('playlist')
                 self.play_playlist(message)
-                return
-            m = re.match(self.translate('something_regex'),
-                         message.data['utterance'], re.M | re.I)
-            if m:
-                LOG.info('I\'m in the play_song handler but I think I\'m'
-                         ' actually being asked to play something '
-                         'indeterminate. Switching handlers.')
-                self.play_something(message)
                 return
 
         query = song
