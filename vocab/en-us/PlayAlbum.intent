@@ -1,0 +1,11 @@
+play the album {album}
+play the album (called|named){album}
+play the album (called|named){album} (by|from){artist}
+play the album {album} (by|from) (the band|the group|the musician|the duo|the artist|){artist}
+play the album (called|named){album} (by|from) (the band|the group|the musician|the duo|the artist|){artist}
+
+//play the album holy mountain
+//play the album named holy mountain
+//play the album holy mountain by sleep
+//play the album called holy mountain by sleep
+//play the album called holy mountain by the band sleep

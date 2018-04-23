@@ -8,7 +8,7 @@ found_exe() {
 # user named 'mycroft'.  So avoid apt-get for installing packages.
 
 # polkit uses pkcon instead of apt-get; pkcon will then run apt-get
-if found_exe pkcon; then
-    pkcon install raspotify -y > /dev/null
-fi
+#if found_exe pkcon; then
+#    pkcon install raspotify -y > /dev/null
+#fi
 exit 0 # Will fail if package already is on latest version
