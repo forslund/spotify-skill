@@ -1,0 +1,10 @@
+spiele das Album {album}
+spiele das Album (namens|){album}
+spiele das Album (namens|){album} (von|){artist}
+spiele das Album {album} (von|) (der band|der Gruppe|den Musikern|dem Duo|dem Interpret|){artist}
+spiele das Album (namens|){album} (von|) (der band|der Gruppe|den Musikern|dem Duo|dem Interpret|){artist}
+//spiele das Album holy mountain
+//spiele das Album namens holy mountain
+//spiele das Album holy mountain von sleep
+//spiele das Album namens holy mountain von sleep
+//spiele das Album namens holy mountain von der band sleep
