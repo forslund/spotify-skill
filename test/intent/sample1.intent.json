@@ -1,0 +1,10 @@
+{
+  "utterance": "what spotify devices are available",
+  "intent_type": "list_devices",
+  "intent": {
+    "Spotify": "Spotify",
+    "Device": "devices"
+  },
+  "expected_dialog": "AvailableDevices"
+}
+
