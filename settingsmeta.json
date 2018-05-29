@@ -29,6 +29,23 @@
                         "value": 1
                     }
                 ]
+            },
+            {
+                "name": "Spotify Device",
+                "fields": [
+                    {
+                        "type": "label",
+                        "value": "",
+                        "label": "If you want the skill to default to a specific Spotify device set it below. If not set the player on the Mycroft unit will be used<p/>"
+                    },
+                    {
+                        "name": "default_device",
+                        "type": "text",
+                        "label": "Spotify Device",
+                        "value": "",
+                        "placeholder": ""
+                    }
+                ]
             }
         ]
     }
