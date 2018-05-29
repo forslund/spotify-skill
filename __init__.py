@@ -482,7 +482,7 @@ class SpotifySkill(MycroftSkill):
 
         Returns: (str) best match
         """
-        key, confidence = match_one(playlist, self.playlists.keys())
+        key, confidence = match_one(playlist, list(self.playlists.keys()))
         if confidence > 0.5:
             return key
         else:
@@ -651,7 +651,7 @@ class SpotifySkill(MycroftSkill):
             LOG.info(u'Playlists: {}'.format(self.playlists))
             if not self.playlists:
                 return  # different default action when no lists defined?
-            playlist = self.get_best_playlist(self.playlists.keys()[0])
+            playlist = self.get_best_playlist(list(self.playlists.keys())[0])
             
         if dev and playlist:
             LOG.info(u'playing {} using {}'.format(playlist, dev['name']))
