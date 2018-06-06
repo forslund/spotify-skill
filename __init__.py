@@ -452,6 +452,7 @@ class SpotifySkill(MycroftSkill):
 
     def get_default_device(self):
         """ Get preferred playback device """
+        dev = None
         if self.spotify:
             # When there is an active Spotify device somewhere, use it
             if (self.devices and len(self.devices) > 0 and
@@ -460,8 +461,13 @@ class SpotifySkill(MycroftSkill):
                     if dev['is_active']:
                         return dev  # Use this device
 
-            # No playing device found, use the local Spotify instance
-            dev = self.device_by_name(self.device_name)
+            # No playing device found, use the default Spotify device
+            default_device = self.settings.get('default_device', '')
+            if default_device:
+                dev = self.device_by_name(default_device)
+            # if not set or missing try playing on this device
+            if not dev:
+                dev = self.device_by_name(self.device_name)
             # if not check if a desktop spotify client is playing
             if not dev:
                 dev = self.device_by_name(gethostname())
