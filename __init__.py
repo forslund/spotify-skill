@@ -862,15 +862,14 @@ class SpotifySkill(MycroftSkill):
     @intent_handler(IntentBuilder('').require('Spotify').require('Device'))
     def list_devices(self, message):
         """ List available devices. """
-        LOG.info(self)
         if self.spotify:
             devices = [d['name'] for d in self.spotify.get_devices()]
             if len(devices) == 1:
                 self.speak(devices[0])
             elif len(devices) > 1:
                 self.speak_dialog('AvailableDevices',
-                                  {'devices': '. '.join(devices[:-1]) + '. ' +
-                                              self.translate('And') + '. ' +
+                                  {'devices': ' '.join(devices[:-1]) + ' ' +
+                                              self.translate('And') + ' ' +
                                               devices[-1]})
             else:
                 self.speak_dialog('NoDevicesAvailable')

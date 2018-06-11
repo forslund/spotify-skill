@@ -5,6 +5,6 @@
     "Spotify": "Spotify",
     "Device": "devices"
   },
-  "expected_dialog": "AvailableDevices"
+  "expected_response": "TESTING"
 }
 
