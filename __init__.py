@@ -879,19 +879,18 @@ class SpotifySkill(MycroftSkill):
 
     def stop(self):
         """ Stop playback. """
-        if not self.spotify or not self.spotify.is_playing():
-            self.dev_id = None
-            return False
+        if self.spotify and self.spotify.is_playing():
+            dev = self.get_default_device()
+            self.dev_id = dev['id']
+            if self.dev_id:
+                # self.remove_event('dancing_notes')
+                self.pause(None)
 
-        dev = self.get_default_device()
-        self.dev_id = dev['id']
-        if self.dev_id:
-            # self.remove_event('dancing_notes')
-            self.pause(None)
-
-            # Clear playing device id
-            self.dev_id = None
-            return True
+                # Clear playing device id
+                self.dev_id = None
+                return True
+        self.dev_id = None
+        return False
 
     def stop_librespot(self):
         """ Send Terminate signal to librespot if it's running. """
