@@ -639,7 +639,6 @@ class SpotifySkill(MycroftSkill):
             self.spotify.play(dev_id, uris, context_uri)
             self.start_monitor()
             self.dev_id = dev_id
-            # self.show_notes()
         except spotipy.SpotifyException as e:
             # TODO: Catch other conditions?
             self.speak_dialog('NotAuthorized')
@@ -649,7 +648,7 @@ class SpotifySkill(MycroftSkill):
 
     def start_playlist_playback(self, dev, playlist_name):
         LOG.info(u'Playlist: {}'.format(playlist_name))
-        
+
         playlist = None
         if playlist_name:
             playlist = self.get_best_playlist(playlist_name)
@@ -658,7 +657,7 @@ class SpotifySkill(MycroftSkill):
             if not self.playlists:
                 return  # different default action when no lists defined?
             playlist = self.get_best_playlist(list(self.playlists.keys())[0])
-            
+
         if dev and playlist:
             LOG.info(u'playing {} using {}'.format(playlist, dev['name']))
             self.speak_dialog('listening_to_playlist', data={'playlist': playlist})
@@ -667,7 +666,6 @@ class SpotifySkill(MycroftSkill):
             tracks = self.spotify.user_playlist_tracks(pl['owner']['id'], pl['id'])
             uris = [t['track']['uri'] for t in tracks['items']]
             self.spotify_play(dev['id'], uris=uris)
-            # self.show_notes()
         elif dev:
             LOG.info(u'couldn\'t find {}'.format(playlist))
         else:
@@ -842,48 +840,12 @@ class SpotifySkill(MycroftSkill):
             if dev:
                 self.spotify.transfer_playback(dev['id'])
 
-    def show_notes(self):
-        """ show notes, HA HA """
-        self.schedule_repeating_event(self._update_notes,
-                                      datetime.datetime.now(), 2,
-                                      name='dancing_notes')
-
-    def display_notes(self):
-        """ Start timer thread displaying notes on the display. """
-        pass
-
-    def clear_display(self):
-        """ Clear display. """
-        self.enclosure.mouth_display(img_code="HIAAAAAAAAAAAAAA",
-                                     refresh=False)
-        self.enclosure.mouth_display(img_code="HIAAAAAAAAAAAAAA",
-                                     x=24, refresh=False)
-
-    def draw_notes(self, index):
-        """ Draw notes on display. """
-
-        notes = [['IIAEAOOHGAGEGOOHAA', 'IIAAACAHPDDADCDHPD'],
-                 ['IIAAACAHPDDADCDHPD', 'IIAEAOOHGAGEGOOHAA']]
-
-        #  draw notes
-        for pos in range(4):
-            self.enclosure.mouth_display(img_code=notes[index][pos % 2],
-                                         x=pos * 8,
-                                         refresh=False)
-
-    def _update_notes(self):
-        """ Repeating event updating the display. """
-        if self._should_display_notes():
-            self.draw_notes(self.index)
-            self.index = ((self.index + 1) % 2)
-
     def stop(self):
         """ Stop playback. """
         if self.spotify and self.spotify.is_playing():
             dev = self.get_default_device()
             self.dev_id = dev['id']
             if self.dev_id:
-                # self.remove_event('dancing_notes')
                 self.pause(None)
 
                 # Clear playing device id
@@ -906,13 +868,6 @@ class SpotifySkill(MycroftSkill):
 
         # Do normal shutdown procedure
         super(SpotifySkill, self).shutdown()
-
-    def _should_display_notes(self):
-        _get_active = DisplayManager.get_active
-        if _get_active() == '' or _get_active() == self.name:
-            return True
-        else:
-            return False
 
 
 def create_skill():
