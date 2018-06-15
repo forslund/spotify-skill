@@ -639,7 +639,24 @@ class SpotifySkill(MycroftSkill):
             self.continue_current_playlist(message)
         elif self.playback_prerequisits_ok():
             dev = self.get_default_device()
-            self.start_playlist_playback(dev, self.get_best_playlist(playlist))
+            playlist = self.get_best_playlist(playlist)
+            if not self.start_playlist_playback(dev, playlist):
+                return self.playlist_fallback(message)
+
+    def playlist_fallback(self, message):
+        """ Do some fallback checks if playlist was not found. """
+        if message.data['utterance'] == 'play next' and self.next_track(None):
+            return True
+
+        LOG.info('Checking if this is an album')
+        m = re.match(self.translate('play_album_backup'),
+                     message.data['utterance'], re.M | re.I)
+        if m:
+            album = m.groupdict()['album']
+        else:
+            album = message.data['utterance'].lstrip('play ')
+        message.data['album'] = album
+        return self.play_album(message)
 
     def continue_current_playlist(self, message):
         if self.playback_prerequisits_ok():
@@ -847,6 +864,8 @@ class SpotifySkill(MycroftSkill):
             LOG.info('Next Spotify track')
             self.spotify.next(self.dev_id)
             self.start_monitor()
+            return True
+        return False
 
     def prev_track(self, message):
         """ Handler for playback control prev. """
