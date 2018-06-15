@@ -449,7 +449,7 @@ class SpotifySkill(MycroftSkill):
             self._playlists = {}
             playlists = self.spotify.current_user_playlists().get('items', [])
             for p in playlists:
-                self._playlists[p['name']] = p
+                self._playlists[p['name'].lower()] = p
             self.__playlists_fetched = now
         return self._playlists
 
@@ -519,8 +519,9 @@ class SpotifySkill(MycroftSkill):
 
         Returns: (str) best match
         """
-        key, confidence = match_one(playlist, list(self.playlists.keys()))
-        if confidence > 0.5:
+        key, confidence = match_one(playlist.lower(),
+                                    list(self.playlists.keys()))
+        if confidence > 0.7:
             return key
         else:
             return None
