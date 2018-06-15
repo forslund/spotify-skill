@@ -682,17 +682,11 @@ class SpotifySkill(MycroftSkill):
             LOG.exception(e)
             self.speak_dialog('NotAuthorized')
 
-    def start_playlist_playback(self, dev, playlist_name):
-        LOG.info(u'Playlist: {}'.format(playlist_name))
-
-        playlist = None
-        if playlist_name:
-            playlist = self.get_best_playlist(playlist_name)
-        if not playlist:
-            LOG.info(u'Playlists: {}'.format(self.playlists))
-            if not self.playlists:
-                return  # different default action when no lists defined?
-            playlist = self.get_best_playlist(list(self.playlists.keys())[0])
+    def start_playlist_playback(self, dev, playlist):
+        LOG.info(u'Playlist: {}'.format(playlist))
+        if not playlist and not self.playlists:
+            LOG.debug('No playlists available')
+            return False  # different default action when no lists defined?
 
         if dev and playlist:
             LOG.info(u'playing {} using {}'.format(playlist, dev['name']))
@@ -704,10 +698,12 @@ class SpotifySkill(MycroftSkill):
                                                        pl['id'])
             uris = [t['track']['uri'] for t in tracks['items']]
             self.spotify_play(dev['id'], uris=uris)
-        elif dev:
-            LOG.info(u'couldn\'t find {}'.format(playlist))
-        else:
+            return True
+        elif not dev:
             LOG.info('No spotify devices found')
+        else:
+            LOG.info('No playlist found')
+        return False
 
     def play_playlist_on(self, message):
         """ Play playlist on specific device. """
