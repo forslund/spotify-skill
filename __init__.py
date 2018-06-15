@@ -695,7 +695,7 @@ class SpotifySkill(MycroftSkill):
 
         if dev and playlist:
             LOG.info(u'playing {} using {}'.format(playlist, dev['name']))
-            self.speak_dialog('listening_to_playlist',
+            self.speak_dialog('ListeningToPlaylist',
                               data={'playlist': playlist})
             time.sleep(2)
             pl = self.playlists[playlist]
@@ -749,20 +749,20 @@ class SpotifySkill(MycroftSkill):
             try:
                 if data_type is 'track':
                     (song, artists, uri) = get_song_info(data)
-                    self.speak_dialog('listening_to_song_by',
+                    self.speak_dialog('ListeningToSongBy',
                                       data={'tracks': song,
                                             'artist': artists[0]})
                     time.sleep(2)
                     self.spotify_play(dev['id'], uris=[uri])
                 elif data_type is 'artist':
                     (artist, uri) = get_artist_info(data)
-                    self.speak_dialog('listening_to_artist',
+                    self.speak_dialog('ListeningToArtist',
                                       data={'artist': artist})
                     time.sleep(2)
                     self.spotify_play(dev['id'], context_uri=uri)
                 elif data_type is 'album':
                     (album, artists, uri) = get_album_info(data)
-                    self.speak_dialog('listening_to_album_by',
+                    self.speak_dialog('ListeningToAlbumBy',
                                       data={'album': album,
                                             'artist': artists[0]})
                     time.sleep(2)
@@ -775,7 +775,7 @@ class SpotifySkill(MycroftSkill):
                         uris.append(item['uri'])
                     datai = {'genre': genre_name, 'track': items[0]['name'],
                              'artist': items[0]['artists'][0]['name']}
-                    self.speak_dialog('listening_to_genre', data)
+                    self.speak_dialog('ListeningToGenre', data)
                     time.sleep(2)
                     self.spotify_play(dev['id'], uris=uris)
             except Exception as e:
@@ -862,15 +862,14 @@ class SpotifySkill(MycroftSkill):
     @intent_handler(IntentBuilder('').require('Spotify').require('Device'))
     def list_devices(self, message):
         """ List available devices. """
-        LOG.info(self)
         if self.spotify:
             devices = [d['name'] for d in self.spotify.get_devices()]
             if len(devices) == 1:
                 self.speak(devices[0])
             elif len(devices) > 1:
                 self.speak_dialog('AvailableDevices',
-                                  {'devices': '. '.join(devices[:-1]) + '. ' +
-                                              self.translate('And') + '. ' +
+                                  {'devices': ' '.join(devices[:-1]) + ' ' +
+                                              self.translate('And') + ' ' +
                                               devices[-1]})
             else:
                 self.speak_dialog('NoDevicesAvailable')
