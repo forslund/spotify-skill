@@ -449,7 +449,7 @@ class SpotifySkill(MycroftSkill):
             self._playlists = {}
             playlists = self.spotify.current_user_playlists().get('items', [])
             for p in playlists:
-                self._playlists[p['name']] = p
+                self._playlists[p['name'].lower()] = p
             self.__playlists_fetched = now
         return self._playlists
 
@@ -519,8 +519,9 @@ class SpotifySkill(MycroftSkill):
 
         Returns: (str) best match
         """
-        key, confidence = match_one(playlist, list(self.playlists.keys()))
-        if confidence > 0.5:
+        key, confidence = match_one(playlist.lower(),
+                                    list(self.playlists.keys()))
+        if confidence > 0.7:
             return key
         else:
             return None
@@ -638,7 +639,24 @@ class SpotifySkill(MycroftSkill):
             self.continue_current_playlist(message)
         elif self.playback_prerequisits_ok():
             dev = self.get_default_device()
-            self.start_playlist_playback(dev, self.get_best_playlist(playlist))
+            playlist = self.get_best_playlist(playlist)
+            if not self.start_playlist_playback(dev, playlist):
+                return self.playlist_fallback(message)
+
+    def playlist_fallback(self, message):
+        """ Do some fallback checks if playlist was not found. """
+        if message.data['utterance'] == 'play next' and self.next_track(None):
+            return True
+
+        LOG.info('Checking if this is an album')
+        m = re.match(self.translate('play_album_backup'),
+                     message.data['utterance'], re.M | re.I)
+        if m:
+            album = m.groupdict()['album']
+        else:
+            album = message.data['utterance'].lstrip('play ')
+        message.data['album'] = album
+        return self.play_album(message)
 
     def continue_current_playlist(self, message):
         if self.playback_prerequisits_ok():
@@ -681,17 +699,11 @@ class SpotifySkill(MycroftSkill):
             LOG.exception(e)
             self.speak_dialog('NotAuthorized')
 
-    def start_playlist_playback(self, dev, playlist_name):
-        LOG.info(u'Playlist: {}'.format(playlist_name))
-
-        playlist = None
-        if playlist_name:
-            playlist = self.get_best_playlist(playlist_name)
-        if not playlist:
-            LOG.info(u'Playlists: {}'.format(self.playlists))
-            if not self.playlists:
-                return  # different default action when no lists defined?
-            playlist = self.get_best_playlist(list(self.playlists.keys())[0])
+    def start_playlist_playback(self, dev, playlist):
+        LOG.info(u'Playlist: {}'.format(playlist))
+        if not playlist and not self.playlists:
+            LOG.debug('No playlists available')
+            return False  # different default action when no lists defined?
 
         if dev and playlist:
             LOG.info(u'playing {} using {}'.format(playlist, dev['name']))
@@ -703,10 +715,12 @@ class SpotifySkill(MycroftSkill):
                                                        pl['id'])
             uris = [t['track']['uri'] for t in tracks['items']]
             self.spotify_play(dev['id'], uris=uris)
-        elif dev:
-            LOG.info(u'couldn\'t find {}'.format(playlist))
-        else:
+            return True
+        elif not dev:
             LOG.info('No spotify devices found')
+        else:
+            LOG.info('No playlist found')
+        return False
 
     def play_playlist_on(self, message):
         """ Play playlist on specific device. """
@@ -850,6 +864,8 @@ class SpotifySkill(MycroftSkill):
             LOG.info('Next Spotify track')
             self.spotify.next(self.dev_id)
             self.start_monitor()
+            return True
+        return False
 
     def prev_track(self, message):
         """ Handler for playback control prev. """
