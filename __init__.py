@@ -676,15 +676,6 @@ class SpotifySkill(MycroftSkill):
             self.launch_librespot()
         return True
 
-    @intent_handler(IntentBuilder('').require('Play').require('Spotify'))
-    def play_spotify(self, message):
-        # Play anything
-        if self.playback_prerequisits_ok():
-            message.data['utterance'] = 'play spotify'  # play anything!
-            self.play_playlist(message)
-        else:
-            self.speak_dialog('NotAuthorized')
-
     def spotify_play(self, dev_id, uris=None, context_uri=None):
         """ Start spotify playback and catch any exceptions. """
         try:
