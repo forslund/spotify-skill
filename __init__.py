@@ -600,9 +600,12 @@ class SpotifySkill(MycroftSkill):
             query += ' artist:' + artist
             LOG.info("\tI also think the artist is: " + artist)
 
-        LOG.info("The query I want to send to Spotify is: '" + query + "'")
-        res = self.spotify.search(query, type='album')
-        self.play(data=res, data_type='album')
+        if self.playback_prerequisits_ok():
+            LOG.info("The query I want to send to Spotify is: '" + query + "'")
+            res = self.spotify.search(query, type='album')
+            self.play(data=res, data_type='album')
+        else:
+            LOG.info('Spotify playback couldn\'t be started')
 
     def play_something(self, message):
         """
@@ -620,17 +623,18 @@ class SpotifySkill(MycroftSkill):
         genres = ['rap', 'dance', 'pop', 'hip hop', 'rock', 'trap',
                   'classic rock', 'metal', 'edm', 'techno', 'house']
         query = ''
-        if artist:
-            LOG.info("\tBut it has to be by " + artist)
-            query = 'artist:' + artist
-            res = self.spotify.search(query, type='artist')
-            self.play(data=res, data_type='artist')
-        else:
-            genre = random.choice(genres)
-            LOG.info("\tI'm going to pick the genre " + genre)
-            query = 'genre:' + genre
-            res = self.spotify.search(query, type='track')
-            self.play(data=res, data_type='genre', genre_name=genre)
+        if self.playback_prerequisits_ok():
+            if artist:
+                LOG.info("\tBut it has to be by " + artist)
+                query = 'artist:' + artist
+                res = self.spotify.search(query, type='artist')
+                self.play(data=res, data_type='artist')
+            else:
+                genre = random.choice(genres)
+                LOG.info("\tI'm going to pick the genre " + genre)
+                query = 'genre:' + genre
+                res = self.spotify.search(query, type='track')
+                self.play(data=res, data_type='genre', genre_name=genre)
 
     def play_playlist(self, message):
         """ Play user playlist on default device. """
@@ -672,6 +676,10 @@ class SpotifySkill(MycroftSkill):
             self.speak_dialog('NotAuthorized')
             return False
 
+        devs = [d['name'] for d in self.devices]
+        if self.process and self.device_name not in devs:
+            self.stop_librespot()
+            self.__devices_fetched = 0  # Make sure devices are fetched again
         if not self.process:
             self.launch_librespot()
         return True
@@ -911,6 +919,7 @@ class SpotifySkill(MycroftSkill):
         if self.process and self.process.poll() is None:
             self.process.send_signal(signal.SIGTERM)
             self.process.communicate()  # Communicate to remove zombie
+            self.process = None
 
     def shutdown(self):
         """ Remove the monitor at shutdown. """
