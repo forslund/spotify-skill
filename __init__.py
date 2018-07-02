@@ -540,8 +540,14 @@ class SpotifySkill(MycroftSkill):
             message (Dict): The utterance as interpreted by Padatious
         """
         song = message.data.get('track')
+        if song:
+            song = re.sub(self.translate('on_spotify_regex'), '', song)
         artist = message.data.get('artist')
+        if artist:
+            artist = re.sub(self.translate('on_spotify_regex'), '', artist)
         album = message.data.get('album')
+        if album:
+            album = re.sub(self.translate('on_spotify_regex'), '', album)
 
         # workaround for Padatious training, as the most generic "play {track}"
         # is taking precedence over the play_something and play_playlist rules
@@ -592,7 +598,11 @@ class SpotifySkill(MycroftSkill):
             message (Dict): The utterance as interpreted by Padatious
         """
         album = message.data.get('album')
+        if album:
+            album = re.sub(self.translate('on_spotify_regex'), '', album)
         artist = message.data.get('artist')
+        if artist:
+            artist = re.sub(self.translate('on_spotify_regex'), '', artist)
         query = album
         LOG.info("I've been asked to play a particular album.")
         LOG.info("\tI think the album is: " + album)
@@ -620,6 +630,8 @@ class SpotifySkill(MycroftSkill):
         """
         LOG.info("I've been asked to play pretty much anything.")
         artist = message.data.get('artist')
+        if artist:
+            artist = re.sub(self.translate('on_spotify_regex'), '', artist)
         genres = ['rap', 'dance', 'pop', 'hip hop', 'rock', 'trap',
                   'classic rock', 'metal', 'edm', 'techno', 'house']
         query = ''
@@ -639,6 +651,9 @@ class SpotifySkill(MycroftSkill):
     def play_playlist(self, message):
         """ Play user playlist on default device. """
         playlist = message.data.get('playlist')
+        if playlist:
+            playlist = re.sub(self.translate('on_spotify_regex'), '', playlist)
+
         if not playlist or playlist == 'spotify':
             self.continue_current_playlist(message)
         elif self.playback_prerequisits_ok():
@@ -657,6 +672,7 @@ class SpotifySkill(MycroftSkill):
                      message.data['utterance'], re.M | re.I)
         if m:
             album = m.groupdict()['album']
+            LOG.info('Album: "{}"'.format(album))
         else:
             album = message.data['utterance'].lstrip('play ')
         message.data['album'] = album

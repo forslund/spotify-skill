@@ -1,1 +1,1 @@
-^play (?P<album>.*?)( by ([\w\s]+?))?$
+^play( the album | )(?P<album>.+?)( by ([\w\s]+?))?$
