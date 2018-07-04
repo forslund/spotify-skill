@@ -218,6 +218,18 @@ class SpotifyConnect(spotipy.Spotify):
         except Exception as e:
             LOG.error(e)
 
+    def shuffle(self, state):
+        """ Toggle shuffling
+
+            Parameters:
+                state: Shuffle state
+        """
+        uri = 'me/player/shuffle?state={}'.format(state)
+        try:
+            self._put(uri)
+        except Exception as e:
+            LOG.error(e)
+
 
 def get_album_info(data):
     """ Get album info from data object.
@@ -434,7 +446,8 @@ class SpotifySkill(MycroftSkill):
 
         # Play playlists
         self.register_intent_file('PlayPlaylist.intent', self.play_playlist)
-
+        self.register_intent_file('ShuffleOn.intent', self.shuffle_on)
+        self.register_intent_file('ShuffleOff.intent', self.shuffle_off)
         # TODO: REGRESSION: handling devices for all the above playing
         # scenarios is going to require a second layer of logic for each one
         # self.register_intent_file('PlayOn.intent', self.play_playlist_on)
@@ -835,6 +848,16 @@ class SpotifySkill(MycroftSkill):
             return
 
         return res
+
+    def shuffle_on(self):
+        """ Get preferred playback device """
+        if self.spotify:
+            self.spotify.shuffle(True)
+
+    def shuffle_off(self):
+        """ Get preferred playback device """
+        if self.spotify:
+            self.spotify.shuffle(False)
 
     def __pause(self):
         # if authorized and playback was started by the skill
