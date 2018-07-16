@@ -434,7 +434,8 @@ class SpotifySkill(MycroftSkill):
 
         # Play playlists
         self.register_intent_file('PlayPlaylist.intent', self.play_playlist)
-
+        intent = IntentBuilder('').require('Spotify').require('Search').require('SpotifyTitle')
+        self.register_intent(intent, self.search_spotify)
         # TODO: REGRESSION: handling devices for all the above playing
         # scenarios is going to require a second layer of logic for each one
         # self.register_intent_file('PlayOn.intent', self.play_playlist_on)
@@ -851,6 +852,22 @@ class SpotifySkill(MycroftSkill):
             return
 
         return res
+
+    def search_spotify(self, message):
+        utterance = message.data['utterance']
+        if len(utterance.split(self.translate('ForAlbum'))) == 2:
+            query = utterance.split(self.translate('ForAlbum'))[1]
+            message.data['album'] = query.strip()
+            self.play_album(message)
+        elif len(utterance.split(self.translate('ForArtist'))) == 2:
+            query = utterance.split(self.translate('ForArtist'))[1]
+            message.data['artist'] = query.strip()
+            self.play_something(message)
+        else:
+            for_word = ' ' + self.translate('For')
+            query = for_word.join(utterance.split(for_word)[1:])
+            message.data['track'] = query.strip()
+            self.play_song(message)
 
     def __pause(self):
         # if authorized and playback was started by the skill
