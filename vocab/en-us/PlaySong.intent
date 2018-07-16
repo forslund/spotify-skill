@@ -1,8 +1,8 @@
-play {track}( by {artist}|) (off|from)( the album|the vinyl| the record|) {album}
-play {track} (by|from) (the band|the group|the musician|the duo|the artist|){artist}
-play {track} (off|from)( the album|the vinyl| the record|) {album} (by|from){artist}
-play the (song|piece|track|composition)( called| named|) {track}( by {artist}|) (off|from)( the album| the vinyl| the record|) {album}
-play {track}( by {artist}|)
+play {track}( by {artist}|) (off|from)( the album|the vinyl| the record|) {album}(| (on|with|using) spotify)
+play {track} (by|from) (the band|the group|the musician|the duo|the artist|){artist}(| (on|with|using) spotify)
+play {track} (off|from)( the album|the vinyl| the record|) {album} (by|from){artist}(| (on|with|using) spotify)
+play the (song|piece|track|composition)( called| named|) {track}( by {artist}|) (off|from)( the album| the vinyl| the record|) {album}(| (on|with|using) spotify)
+play {track}( by {artist}|)(| (on|with|using) spotify)
 
 //play holy mountain
 //play the song holy mountain

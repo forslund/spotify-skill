@@ -1,8 +1,8 @@
-play the album {album}
-play the album (called|named){album}
-play the album (called|named){album} (by|from){artist}
-play the album {album} (by|from) (the band|the group|the musician|the duo|the artist|){artist}
-play the album (called|named){album} (by|from) (the band|the group|the musician|the duo|the artist|){artist}
+play the album {album}( (on|with|using) spotify|)
+play the album (called|named){album}( (on|with|using) spotify|)
+play the album (called|named){album} (by|from){artist}( (on|with|using) spotify|)
+play the album {album} (by|from) (the band|the group|the musician|the duo|the artist|){artist}( (on|with|using) spotify|)
+play the album (called|named){album} (by|from) (the band|the group|the musician|the duo|the artist|){artist}( (on|with|using) spotify|)
 
 //play the album holy mountain
 //play the album named holy mountain
