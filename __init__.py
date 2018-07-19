@@ -883,7 +883,7 @@ class SpotifySkill(MycroftSkill):
             message.data['track'] = query.strip()
             self.play_song(message)
 
-def shuffle_on(self):
+    def shuffle_on(self):
         """ Get preferred playback device """
         if self.spotify:
             self.spotify.shuffle(True)
