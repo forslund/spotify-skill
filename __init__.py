@@ -446,7 +446,8 @@ class SpotifySkill(MycroftSkill):
 
         # Play playlists
         self.register_intent_file('PlayPlaylist.intent', self.play_playlist)
-        intent = IntentBuilder('').require('Spotify').require('Search').require('SpotifyTitle')
+        intent = IntentBuilder('').require('Spotify').require('Search') \
+                                  .require('For')
         self.register_intent(intent, self.search_spotify)
         self.register_intent_file('ShuffleOn.intent', self.shuffle_on)
         self.register_intent_file('ShuffleOff.intent', self.shuffle_off)
