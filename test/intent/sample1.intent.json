@@ -2,7 +2,7 @@
   "utterance": "what spotify devices are available",
   "intent_type": "list_devices",
   "intent": {
-    "Spotify": "Spotify",
+    "Spotify": "spotify",
     "Device": "devices"
   },
   "expected_response": "TESTING"
