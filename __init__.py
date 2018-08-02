@@ -361,8 +361,14 @@ class SpotifySkill(MycroftSkill):
     # Handle auto ducking when listener is started.
 
     def handle_listener_started(self, message):
-        """ Handle auto ducking when listener is started. """
-        if self.spotify.is_playing():
+        """ Handle auto ducking when listener is started.
+
+        The ducking is enabled/disabled using the skill settings on home.
+
+        TODO: Evaluate the Idle check logic
+        """
+        if self.spotify.is_playing() and \
+                self.settings.get('use_ducking', 'false') == 'true':
             self.__pause()
             self.ducking = True
 

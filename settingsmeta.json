@@ -46,7 +46,25 @@
                         "placeholder": ""
                     }
                 ]
+            },
+            {
+                "name": "Audio Ducking",
+                "fields": [
+                    {
+                        "type": "label",
+                        "value": "",
+                        "label": "Pause Spotify when wakeword is detected<p/>"
+                    },
+                    {
+                        "name": "use_ducking",
+                        "type": "checkbox",
+                        "label": "Use audio ducking",
+                        "value": "false",
+                        "placeholder": ""
+                    }
+                ]
             }
+
         ]
     }
 }
