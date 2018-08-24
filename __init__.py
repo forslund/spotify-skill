@@ -368,7 +368,7 @@ class SpotifySkill(MycroftSkill):
         TODO: Evaluate the Idle check logic
         """
         if self.spotify.is_playing() and \
-                self.settings.get('use_ducking', 'false') == 'true':
+                self.settings.get('use_ducking', False):
             self.__pause()
             self.ducking = True
 
