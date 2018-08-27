@@ -24,7 +24,6 @@ speaker on the equipment.)
 import re
 from mycroft.skills.core import MycroftSkill, intent_handler, \
                                 intent_file_handler
-import mycroft.client.enclosure.display_manager as DisplayManager
 from mycroft.util.parse import match_one
 from mycroft.util.log import LOG
 from mycroft.api import DeviceApi
@@ -384,7 +383,7 @@ class SpotifySkill(MycroftSkill):
             self.cancel_scheduled_event('IdleCheck')
             return
 
-        active = DisplayManager.get_active()
+        active = self.enclosure.display_manager.get_active()
         if not active == '' or active == 'SpotifySkill':
             # No activity, start to fall asleep
             self.idle_count += 1
