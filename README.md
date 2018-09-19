@@ -40,7 +40,7 @@ _NOTE: You MUST have a Premium Spotify account to use this **Skill**. It will NO
 The Mycroft devs
 
 ## Category
-**music**
+**Music**
 
 ## Tags
 #spotify
