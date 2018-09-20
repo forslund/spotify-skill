@@ -24,7 +24,7 @@ speaker on the equipment.)
 import re
 from mycroft.skills.core import MycroftSkill, intent_handler, \
                                 intent_file_handler
-from mycroft.util.parse import match_one
+from mycroft.util.parse import match_one, fuzzy_match
 from mycroft.util.log import LOG
 from mycroft.api import DeviceApi
 from padatious import IntentContainer
@@ -314,6 +314,8 @@ class SpotifySkill(MycroftSkill):
         self.add_event('mycroft.audio.service.pause', self.pause)
         self.add_event('mycroft.audio.service.resume', self.resume)
 
+        self.add_event('play:query', self.play__query)
+        self.add_event('play:start', self.play__start)
         # Check and then monitor for credential changes
         self.settings.set_changed_callback(self.on_websettings_changed)
         # Retry in 5 minutes
@@ -443,22 +445,150 @@ class SpotifySkill(MycroftSkill):
     ######################################################################
     # Intent handling
 
+    def play__query(self, message):
+        phrase = message.data["phrase"]
+        dev = self.get_default_device()
+
+        # Not ready to play
+        if not dev:
+            return
+
+        if 'spotify' in phrase:
+            bonus = 0.1
+        else:
+            bonus = 0
+
+        phrase = re.sub(r'\s*(on|with|using) spotify\s*', '', phrase)
+
+        data = self.continue_playback(phrase, bonus)
+        if not data:
+            data = self.specific_query(phrase, bonus)
+            if not data:
+                data = self.generic_query(phrase, bonus)
+
+        if data:
+            data['callback_data']['dev'] = dev
+            data['phrase'] = message.data['phrase']
+            data['skill_id'] = self.skill_id
+            self.bus.emit(message.response(data))
+
+    def continue_playback(self, phrase, bonus):
+        pass
+
+    def specific_query(self, phrase, bonus):
+        # Check if playlist
+        match = re.match(r'(the|my) (spotify |)playlist (?P<playlist>.+)',
+                         phrase)
+        if match:
+            bonus += 0.1
+            playlist, conf = self.get_best_playlist(match.groupdict()['playlist'])
+            confidence = min(conf + bonus, 1.0)
+            if not playlist:
+                return
+            uri = self.playlists[playlist]
+            return {
+                'conf': conf,
+                'callback_data': {
+                    'data': uri,
+                    'name': playlist,
+                    'type': 'playlist'
+                }
+            }
+        # Check album
+        match = re.match(r'the (album|record) (?P<album>.+)', phrase)
+        if match:
+            bonus += 0.1
+            album = match.groupdict()['album']
+            return self.query_album(album, bonus)
+
+        # Check artist
+        match = re.match(
+            r'(the artist|the group|the band|something by) (?P<artist>.+)',
+            phrase)
+        if match:
+            bonus += 0.1
+            artist = match.groupdict()['artist']
+            data = self.spotify.search(artist, type='artist')
+            if data and data['artists']['items']:
+                best = data['artists']['items'][0]['name']
+                confidence = min(fuzzy_match(best, artist.lower()) + bonus, 1.0)
+                return {
+                    'conf': confidence,
+                    'callback_data': {
+                        'data': data,
+                        'name': None,
+                        'type': 'artist'
+                    }
+                }
+        match = re.match(r'the (song|track) (?P<track>.+)', phrase)
+        if match:
+            data = self.spotify.search(match.groupdict()['track'],
+                                       type='track')
+            if data:
+                return {
+                    'conf': 1.0,
+                    'callback_data': {
+                        'data': data,
+                        'name': None,
+                        'type': 'track'
+                    }
+                }
+
+    def generic_query(self, phrase, bonus):
+        playlist, conf = self.get_best_playlist(phrase)
+        if conf > 0.5:
+            uri = self.playlists[playlist]
+            return {
+                'conf': conf,
+                'callback_data': {
+                    'data': uri,
+                    'name': playlist,
+                    'type': 'playlist'
+                }
+            }
+        else:
+            return self.query_album(phrase, bonus)
+
+    def query_album(self, album, bonus):
+        data = None
+        if len(album.split('by')) > 1:
+            album, artist = album.split(' by ')
+            album='*{}* artist:{}'.format(album, artist)
+            bonus += 0.1
+        data = self.spotify.search(album, type='album')
+        if data and data['albums']['items']:
+            best = data['albums']['items'][0]['name']
+            confidence = min(fuzzy_match(best.lower(), album) + bonus, 1.0)
+            return {
+                'conf': confidence,
+                'callback_data': {
+                    'data': data,
+                    'name': None,
+                    'type': 'album'
+                }
+            }
+
+    def play__start(self, message):
+        if message.data["skill_id"] != self.skill_id:
+            # Not for this skill!
+            return
+
+        phrase = message.data["phrase"]
+        data = message.data["callback_data"]
+        if data['type'] == 'playlist':
+            self.start_playlist_playback(data['dev'], data['name'],
+                                         data['data'])
+        else:
+            print('playing {}'.format(data['type']))
+            try:
+                self.play(data=data['data'], data_type=data['type'])
+            except:
+                self.log.exception()
+
     def create_intents(self):
         # Create intents for start playback handlers.
-        self.register_intent_file('PlaySomeMusic.intent', self.play_something)
-        self.register_intent_file('PlayAlbum.intent', self.play_album)
-        self.register_intent_file('PlaySong.intent', self.play_song)
-
-        # Play playlists
-        self.register_intent_file('PlayPlaylist.intent', self.play_playlist)
-        intent = IntentBuilder('').require('Spotify').require('Search') \
-                                  .require('For')
-        self.register_intent(intent, self.search_spotify)
         self.register_intent_file('ShuffleOn.intent', self.shuffle_on)
         self.register_intent_file('ShuffleOff.intent', self.shuffle_off)
-        # TODO: REGRESSION: handling devices for all the above playing
-        # scenarios is going to require a second layer of logic for each one
-        # self.register_intent_file('PlayOn.intent', self.play_playlist_on)
 
     @property
     def playlists(self):
@@ -543,9 +673,9 @@ class SpotifySkill(MycroftSkill):
         key, confidence = match_one(playlist.lower(),
                                     list(self.playlists.keys()))
         if confidence > 0.7:
-            return key
+            return key, confidence
         else:
-            return None
+            return None, 0
 
     def play_song(self, message):
         """
@@ -609,96 +739,6 @@ class SpotifySkill(MycroftSkill):
         res = self.spotify.search(query, type='track')
         self.play(data=res, data_type='track')
 
-    def play_album(self, message):
-        """
-        When the user wants to hear an album, optionally with artist
-        informaiton attached.
-        Play the album <album> by <artist>
-
-        Args:
-            message (Dict): The utterance as interpreted by Padatious
-        """
-        album = message.data.get('album')
-        if album:
-            album = re.sub(self.translate('on_spotify_regex'), '', album)
-        artist = message.data.get('artist')
-        if artist:
-            artist = re.sub(self.translate('on_spotify_regex'), '', artist)
-        query = album
-        LOG.info("I've been asked to play a particular album.")
-        LOG.info("\tI think the album is: " + album)
-        if artist:
-            query += ' artist:' + artist
-            LOG.info("\tI also think the artist is: " + artist)
-
-        if self.playback_prerequisits_ok():
-            LOG.info("The query I want to send to Spotify is: '" + query + "'")
-            res = self.spotify.search(query, type='album')
-            self.play(data=res, data_type='album')
-        else:
-            LOG.info('Spotify playback couldn\'t be started')
-
-    def play_something(self, message):
-        """
-        When the user wants to hear something (optionally by an artist), but
-        they don't know exactly what.
-
-        play something
-        play something by <artist>
-
-        Args:
-            message (Dict): The utterance as interpreted by Padatious
-        """
-        LOG.info("I've been asked to play pretty much anything.")
-        artist = message.data.get('artist')
-        if artist:
-            artist = re.sub(self.translate('on_spotify_regex'), '', artist)
-        genres = ['rap', 'dance', 'pop', 'hip hop', 'rock', 'trap',
-                  'classic rock', 'metal', 'edm', 'techno', 'house']
-        query = ''
-        if self.playback_prerequisits_ok():
-            if artist:
-                LOG.info("\tBut it has to be by " + artist)
-                query = 'artist:' + artist
-                res = self.spotify.search(query, type='artist')
-                self.play(data=res, data_type='artist')
-            else:
-                genre = random.choice(genres)
-                LOG.info("\tI'm going to pick the genre " + genre)
-                query = 'genre:' + genre
-                res = self.spotify.search(query, type='track')
-                self.play(data=res, data_type='genre', genre_name=genre)
-
-    def play_playlist(self, message):
-        """ Play user playlist on default device. """
-        playlist = message.data.get('playlist')
-        if playlist:
-            playlist = re.sub(self.translate('on_spotify_regex'), '', playlist)
-
-        if not playlist or playlist == 'spotify':
-            self.continue_current_playlist(message)
-        elif self.playback_prerequisits_ok():
-            dev = self.get_default_device()
-            playlist = self.get_best_playlist(playlist)
-            if not self.start_playlist_playback(dev, playlist):
-                return self.playlist_fallback(message)
-
-    def playlist_fallback(self, message):
-        """ Do some fallback checks if playlist was not found. """
-        if message.data['utterance'] == 'play next' and self.next_track(None):
-            return True
-
-        LOG.info('Checking if this is an album')
-        m = re.match(self.translate('play_album_backup'),
-                     message.data['utterance'], re.M | re.I)
-        if m:
-            album = m.groupdict()['album']
-            LOG.info('Album: "{}"'.format(album))
-        else:
-            album = message.data['utterance'].lstrip('play ')
-        message.data['album'] = album
-        return self.play_album(message)
-
     def continue_current_playlist(self, message):
         if self.playback_prerequisits_ok():
             dev = self.get_default_device()
@@ -735,20 +775,14 @@ class SpotifySkill(MycroftSkill):
             LOG.exception(e)
             self.speak_dialog('NotAuthorized')
 
-    def start_playlist_playback(self, dev, playlist):
-        LOG.info(u'Playlist: {}'.format(playlist))
-        if not playlist and not self.playlists:
-            LOG.debug('No playlists available')
-            return False  # different default action when no lists defined?
-
-        if dev and playlist:
-            LOG.info(u'playing {} using {}'.format(playlist, dev['name']))
+    def start_playlist_playback(self, dev, name, uri):
+        if dev and uri:
+            LOG.info(u'playing {} using {}'.format(name, dev['name']))
             self.speak_dialog('ListeningToPlaylist',
-                              data={'playlist': playlist})
+                              data={'playlist': name})
             time.sleep(2)
-            pl = self.playlists[playlist]
-            tracks = self.spotify.user_playlist_tracks(pl['owner']['id'],
-                                                       pl['id'])
+            tracks = self.spotify.user_playlist_tracks(uri['owner']['id'],
+                                                       uri['id'])
             uris = [t['track']['uri'] for t in tracks['items']]
             self.spotify_play(dev['id'], uris=uris)
             return True
@@ -757,18 +791,6 @@ class SpotifySkill(MycroftSkill):
         else:
             LOG.info('No playlist found')
         return False
-
-    def play_playlist_on(self, message):
-        """ Play playlist on specific device. """
-        if self.playback_prerequisits_ok():
-            playlist = self.get_best_playlist(message.data.get('playlist'))
-            dev = self.device_by_name(message.data.get('device'))
-            if dev:
-                # Assume we are about to act on this device,
-                # transfer playback to it.
-                if not dev['is_active']:
-                    self.spotify.transfer_playback(dev["id"], False)
-                self.start_playlist_playback(dev, playlist)
 
     def play(self, data, data_type='track', genre_name=None):
         """
@@ -797,27 +819,27 @@ class SpotifySkill(MycroftSkill):
             self.speak_dialog('NoDevicesAvailable')
         else:
             try:
-                if data_type is 'track':
+                if data_type == 'track':
                     (song, artists, uri) = get_song_info(data)
                     self.speak_dialog('ListeningToSongBy',
                                       data={'tracks': song,
                                             'artist': artists[0]})
                     time.sleep(2)
                     self.spotify_play(dev['id'], uris=[uri])
-                elif data_type is 'artist':
+                elif data_type == 'artist':
                     (artist, uri) = get_artist_info(data)
                     self.speak_dialog('ListeningToArtist',
                                       data={'artist': artist})
                     time.sleep(2)
                     self.spotify_play(dev['id'], context_uri=uri)
-                elif data_type is 'album':
+                elif data_type == 'album':
                     (album, artists, uri) = get_album_info(data)
                     self.speak_dialog('ListeningToAlbumBy',
                                       data={'album': album,
                                             'artist': artists[0]})
                     time.sleep(2)
                     self.spotify_play(dev['id'], context_uri=uri)
-                elif data_type is 'genre':
+                elif data_type == 'genre':
                     items = data['tracks']['items']
                     random.shuffle(items)
                     uris = []
@@ -828,6 +850,8 @@ class SpotifySkill(MycroftSkill):
                     self.speak_dialog('ListeningToGenre', data)
                     time.sleep(2)
                     self.spotify_play(dev['id'], uris=uris)
+                else:
+                    print('wrong data_type')
             except Exception as e:
                 LOG.error("Unable to obtain the name, artist, "
                           "and/or URI information while asked to play "
@@ -842,11 +866,6 @@ class SpotifySkill(MycroftSkill):
 
             TODO: improve results of albums by checking artist
         """
-        dev = self.get_default_device()
-        if not dev:
-            self.speak_dialog('NoDefaultDeviceAvailable')
-            return
-
         res = None
         if search_type == 'album' and len(query.split('by')) > 1:
             title, artist = query.split('by')
@@ -855,7 +874,7 @@ class SpotifySkill(MycroftSkill):
             result = self.spotify.search(query, type=search_type)
 
         if search_type == 'album':
-            if len(result['albums']['items']) > 0 and dev:
+            if len(result['albums']['items']) > 0:
                 album = result['albums']['items'][0]
                 LOG.info(album)
                 res = album
