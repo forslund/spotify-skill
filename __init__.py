@@ -40,6 +40,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import random
 
+from .common_play_skill import CommonPlaySkill, CPSMatchLevel
 
 def get_token(dev_cred):
     """ Get token with a single retry.
@@ -262,7 +263,7 @@ def get_song_info(data):
             data['tracks']['items'][0]['uri'])
 
 
-class SpotifySkill(MycroftSkill):
+class SpotifySkill(CommonPlaySkill):
     """Spotify control through the Spotify Connect API."""
 
     def __init__(self):
@@ -307,15 +308,13 @@ class SpotifySkill(MycroftSkill):
 
     def initialize(self):
         # Make sure the spotify login scheduled event is shutdown
+        super().initialize()
         self.cancel_scheduled_event('SpotifyLogin')
         # Setup handlers for playback control messages
         self.add_event('mycroft.audio.service.next', self.next_track)
         self.add_event('mycroft.audio.service.prev', self.prev_track)
         self.add_event('mycroft.audio.service.pause', self.pause)
         self.add_event('mycroft.audio.service.resume', self.resume)
-
-        self.add_event('play:query', self.play__query)
-        self.add_event('play:start', self.play__start)
         # Check and then monitor for credential changes
         self.settings.set_changed_callback(self.on_websettings_changed)
         # Retry in 5 minutes
@@ -445,8 +444,7 @@ class SpotifySkill(MycroftSkill):
     ######################################################################
     # Intent handling
 
-    def play__query(self, message):
-        phrase = message.data["phrase"]
+    def CPS__match_query_phrase(self, phrase):
         dev = self.get_default_device()
 
         # Not ready to play
@@ -460,20 +458,34 @@ class SpotifySkill(MycroftSkill):
 
         phrase = re.sub(r'\s*(on|with|using) spotify\s*', '', phrase)
 
-        data = self.continue_playback(phrase, bonus)
+        confidence, data = self.continue_playback(phrase, bonus)
         if not data:
-            data = self.specific_query(phrase, bonus)
+            confidence, data = self.specific_query(phrase, bonus)
             if not data:
-                data = self.generic_query(phrase, bonus)
+                confidence, data = self.generic_query(phrase, bonus)
 
         if data:
-            data['callback_data']['dev'] = dev
-            data['phrase'] = message.data['phrase']
-            data['skill_id'] = self.skill_id
-            self.bus.emit(message.response(data))
+            data['dev'] = dev
+            if confidence > 0.9:
+                confidence = CPSMatchLevel.EXACT
+            elif confidence > 0.7:
+                confidence = CPSMatchLevel.MULTI_KEY
+            elif confidence > 0.5:
+                confidence = CPSMatchLevel.TITLE
+            else:
+                confidence = CPSMatchLevel.CATEGORY
+            return phrase, confidence, data
 
     def continue_playback(self, phrase, bonus):
-        pass
+        if phrase.strip() == 'spotify':
+            return (1.0,
+                    {
+                        'data': uri,
+                        'name': None,
+                        'type': 'continue'
+                    })
+        else:
+            return None, None
 
     def specific_query(self, phrase, bonus):
         # Check if playlist
@@ -486,14 +498,12 @@ class SpotifySkill(MycroftSkill):
             if not playlist:
                 return
             uri = self.playlists[playlist]
-            return {
-                'conf': conf,
-                'callback_data': {
-                    'data': uri,
-                    'name': playlist,
-                    'type': 'playlist'
-                }
-            }
+            return (conf,
+                    {
+                        'data': uri,
+                        'name': playlist,
+                        'type': 'playlist'
+                    })
         # Check album
         match = re.match(r'the (album|record) (?P<album>.+)', phrase)
         if match:
@@ -512,40 +522,35 @@ class SpotifySkill(MycroftSkill):
             if data and data['artists']['items']:
                 best = data['artists']['items'][0]['name']
                 confidence = min(fuzzy_match(best, artist.lower()) + bonus, 1.0)
-                return {
-                    'conf': confidence,
-                    'callback_data': {
-                        'data': data,
-                        'name': None,
-                        'type': 'artist'
-                    }
-                }
+                return (confidence,
+                        {
+                            'data': data,
+                            'name': None,
+                            'type': 'artist'
+                        })
         match = re.match(r'the (song|track) (?P<track>.+)', phrase)
         if match:
             data = self.spotify.search(match.groupdict()['track'],
                                        type='track')
             if data:
-                return {
-                    'conf': 1.0,
-                    'callback_data': {
-                        'data': data,
-                        'name': None,
-                        'type': 'track'
-                    }
-                }
+                return (1.0,
+                        {
+                            'data': data,
+                            'name': None,
+                            'type': 'track'
+                        })
+        return None, None
 
     def generic_query(self, phrase, bonus):
         playlist, conf = self.get_best_playlist(phrase)
         if conf > 0.5:
             uri = self.playlists[playlist]
-            return {
-                'conf': conf,
-                'callback_data': {
-                    'data': uri,
-                    'name': playlist,
-                    'type': 'playlist'
-                }
-            }
+            return (conf,
+                    {
+                        'data': uri,
+                        'name': playlist,
+                        'type': 'playlist'
+                    })
         else:
             return self.query_album(phrase, bonus)
 
@@ -559,26 +564,21 @@ class SpotifySkill(MycroftSkill):
         if data and data['albums']['items']:
             best = data['albums']['items'][0]['name']
             confidence = min(fuzzy_match(best.lower(), album) + bonus, 1.0)
-            return {
-                'conf': confidence,
-                'callback_data': {
-                    'data': data,
-                    'name': None,
-                    'type': 'album'
-                }
-            }
+            return (confidence,
+                    {
+                        'data': data,
+                        'name': None,
+                        'type': 'album'
+                    })
+        return None, None
 
-    def play__start(self, message):
-        if message.data["skill_id"] != self.skill_id:
-            # Not for this skill!
-            return
-
-        phrase = message.data["phrase"]
-        data = message.data["callback_data"]
-        if data['type'] == 'playlist':
+    def CPS__start(self, phrase, data):
+        if data['type'] == 'continue':
+            pass
+        elif data['type'] == 'playlist':
             self.start_playlist_playback(data['dev'], data['name'],
                                          data['data'])
-        else:
+        else:  # artist, album track
             print('playing {}'.format(data['type']))
             try:
                 self.play(data=data['data'], data_type=data['type'])
