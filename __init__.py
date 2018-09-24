@@ -22,8 +22,7 @@ hardware.  (Which, depending on the audio setup, might not be the main
 speaker on the equipment.)
 """
 import re
-from mycroft.skills.core import MycroftSkill, intent_handler, \
-                                intent_file_handler
+from mycroft.skills.core import intent_handler, intent_file_handler
 from mycroft.util.parse import match_one, fuzzy_match
 from mycroft.util.log import LOG
 from mycroft.api import DeviceApi

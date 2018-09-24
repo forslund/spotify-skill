@@ -1,9 +1,26 @@
-from mycroft import MycroftSkill
+# Copyright 2018 Mycroft AI Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+######################################################################
+# Temporary, will move to mycroft.skills.core
+
+from mycroft import MycroftSkill    # needed after mycroft-core merge?
+
 from enum import Enum
 from abc import ABC, abstractmethod
 from mycroft.skills.audioservice import AudioService
 from mycroft.messagebus.message import Message
-
 
 class CPSMatchLevel(Enum):
         EXACT = 1
@@ -29,8 +46,7 @@ class CommonPlaySkill(MycroftSkill, ABC):
     def __handle_play_query(self, message):
         phrase = message.data["phrase"]
         result = self.CPS__match_query_phrase(phrase)
-        print('##########################')
-        print(result)
+
         if result:
             match = result[0]
             level = result[1]
@@ -42,18 +58,23 @@ class CommonPlaySkill(MycroftSkill, ABC):
                                             "conf": confidence}))
 
     def __calc_confidence(self, match, phrase, level):
+        # Assume the more of the words that get consumed, the better the match
+        consumed_pct = len(match.split()) / len(phrase.split())
+        if consumed_pct > 1.0:
+            consumed_pct = 1.0
+
         if level == CPSMatchLevel.EXACT:
             return 1.0
         elif level == CPSMatchLevel.MULTI_KEY:
-            return 0.9
+            return 0.9 + (consumed_pct / 10)
         elif level == CPSMatchLevel.TITLE:
-            return 0.8
+            return 0.8 + (consumed_pct / 10)
         elif level == CPSMatchLevel.ARTIST:
-            return 0.7
+            return 0.7 + (consumed_pct / 10)
         elif level == CPSMatchLevel.CATEGORY:
-            return 0.6
+            return 0.6 + (consumed_pct / 10)
         elif level == CPSMatchLevel.GENERIC:
-            return 0.5
+            return 0.5 + (consumed_pct / 10)
         else:
             return 0.0  # should never happen
 
@@ -140,5 +161,3 @@ class CommonPlaySkill(MycroftSkill, ABC):
         # Derived classes must implement this, e.g.
         # self.play("http://zoosh.com/stream_music")
         pass
-
-
