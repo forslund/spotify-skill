@@ -479,7 +479,7 @@ class SpotifySkill(CommonPlaySkill):
         if phrase.strip() == 'spotify':
             return (1.0,
                     {
-                        'data': uri,
+                        'data': None,
                         'name': None,
                         'type': 'continue'
                     })
@@ -573,7 +573,7 @@ class SpotifySkill(CommonPlaySkill):
 
     def CPS__start(self, phrase, data):
         if data['type'] == 'continue':
-            pass
+            self.continue_current_playlist(None)
         elif data['type'] == 'playlist':
             self.start_playlist_playback(data['dev'], data['name'],
                                          data['data'])
