@@ -39,7 +39,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import random
 
-from .common_play_skill import CommonPlaySkill, CPSMatchLevel
+from mycroft.skills.common_play_skill import CommonPlaySkill, CPSMatchLevel
 
 def get_token(dev_cred):
     """ Get token with a single retry.
@@ -299,6 +299,12 @@ class SpotifySkill(CommonPlaySkill):
                                   '-p', self.settings['password']])
 
             time.sleep(3)  # give libreSpot time to start-up
+            if self.process and self.process.poll() is not None:
+                # libreSpot shut down immediately.  Bad user/password?
+                if self.settings['user']:
+                    self.speak_dialog("FailedToStart")
+                self.process = None
+                return
 
             # Lower the volume since max volume sounds terrible on the Mark-1
             dev = self.device_by_name(self.device_name)
@@ -633,7 +639,6 @@ class SpotifySkill(CommonPlaySkill):
 
     def get_default_device(self):
         """ Get preferred playback device """
-        dev = None
         if self.spotify:
             # When there is an active Spotify device somewhere, use it
             if (self.devices and len(self.devices) > 0 and
@@ -644,6 +649,7 @@ class SpotifySkill(CommonPlaySkill):
 
             # No playing device found, use the default Spotify device
             default_device = self.settings.get('default_device', '')
+            dev = None
             if default_device:
                 dev = self.device_by_name(default_device)
             # if not set or missing try playing on this device
