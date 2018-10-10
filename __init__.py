@@ -449,7 +449,7 @@ class SpotifySkill(CommonPlaySkill):
     ######################################################################
     # Intent handling
 
-    def CPS__match_query_phrase(self, phrase):
+    def CPS_match_query_phrase(self, phrase):
         dev = self.get_default_device()
 
         # Not ready to play
@@ -577,7 +577,7 @@ class SpotifySkill(CommonPlaySkill):
                     })
         return None, None
 
-    def CPS__start(self, phrase, data):
+    def CPS_start(self, phrase, data):
         if data['type'] == 'continue':
             self.continue_current_playlist(None)
         elif data['type'] == 'playlist':
