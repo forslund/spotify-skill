@@ -461,7 +461,7 @@ class SpotifySkill(CommonPlaySkill):
         else:
             bonus = 0
 
-        phrase = re.sub(r'\s*(on|with|using) spotify\s*', '', phrase)
+        phrase = re.sub(self.translate('on_spotify_regex'), '', phrase)
 
         confidence, data = self.continue_playback(phrase, bonus)
         if not data:
@@ -494,8 +494,7 @@ class SpotifySkill(CommonPlaySkill):
 
     def specific_query(self, phrase, bonus):
         # Check if playlist
-        match = re.match(r'(the|my) (spotify |)playlist (?P<playlist>.+)',
-                         phrase)
+        match = re.match(self.translate('playlist_regex'), phrase)
         if match:
             bonus += 0.1
             playlist, conf = self.get_best_playlist(match.groupdict()['playlist'])
@@ -510,16 +509,14 @@ class SpotifySkill(CommonPlaySkill):
                         'type': 'playlist'
                     })
         # Check album
-        match = re.match(r'the (album|record) (?P<album>.+)', phrase)
+        match = re.match(self.translate('album_regex'), phrase)
         if match:
             bonus += 0.1
             album = match.groupdict()['album']
             return self.query_album(album, bonus)
 
         # Check artist
-        match = re.match(
-            r'(the artist|the group|the band|something by) (?P<artist>.+)',
-            phrase)
+        match = re.match(self.translate('artist_regex'), phrase)
         if match:
             bonus += 0.1
             artist = match.groupdict()['artist']
@@ -533,7 +530,7 @@ class SpotifySkill(CommonPlaySkill):
                             'name': None,
                             'type': 'artist'
                         })
-        match = re.match(r'the (song|track) (?P<track>.+)', phrase)
+        match = re.match(self.translate('song_regex'), phrase)
         if match:
             data = self.spotify.search(match.groupdict()['track'],
                                        type='track')
@@ -561,8 +558,9 @@ class SpotifySkill(CommonPlaySkill):
 
     def query_album(self, album, bonus):
         data = None
-        if len(album.split('by')) > 1:
-            album, artist = album.split(' by ')
+        by_word = ' {} '.format(self.translate('by'))
+        if len(album.split(by_word)) > 1:
+            album, artist = album.split(by_word)
             album='*{}* artist:{}'.format(album, artist)
             bonus += 0.1
         data = self.spotify.search(album, type='album')
