@@ -591,7 +591,10 @@ class SpotifySkill(CommonPlaySkill):
                 self.log.exception()
 
     def create_intents(self):
-        # Create intents for start playback handlers.
+        # Create intents
+        intent = IntentBuilder('').require('Spotify').require('Search') \
+                                  .require('For')
+        self.register_intent(intent, self.search_spotify)
         self.register_intent_file('ShuffleOn.intent', self.shuffle_on)
         self.register_intent_file('ShuffleOff.intent', self.shuffle_off)
 
@@ -681,68 +684,6 @@ class SpotifySkill(CommonPlaySkill):
             return key, confidence
         else:
             return None, 0
-
-    def play_song(self, message):
-        """
-        When the user wants to hear a song, optionally with artist and/or
-        album information attached.
-        play the song <song>
-        play the song <song> by <artist>
-        play the song <song> off <album>
-        play <song> by <artist> off the album <album>
-        etc.
-
-        Args:
-            message (Dict): The utterance as interpreted by Padatious
-        """
-        song = message.data.get('track')
-        if song:
-            song = re.sub(self.translate('on_spotify_regex'), '', song)
-        artist = message.data.get('artist')
-        if artist:
-            artist = re.sub(self.translate('on_spotify_regex'), '', artist)
-        album = message.data.get('album')
-        if album:
-            album = re.sub(self.translate('on_spotify_regex'), '', album)
-
-        # workaround for Padatious training, as the most generic "play {track}"
-        # is taking precedence over the play_something and play_playlist rules
-        if song and not album:
-            if song == 'spotify':
-                self.continue_current_playlist(message)
-                return
-            m = re.match(self.translate('something_regex'),
-                         message.data['utterance'], re.M | re.I)
-            if m:
-                LOG.debug('play something detected, switching handler')
-                self.play_something(message)
-                return
-
-            m = re.match(self.translate('playlist_regex'),
-                         message.data['utterance'], re.M | re.I)
-            if m:
-                LOG.debug('I\'m in the play_song handler but I\'ve seen'
-                          ' an utterance that contains \'playlist.\''
-                          ' I want to play the playlist ' + m.group(1) +
-                          '. Switching handlers.')
-                message.data['playlist'] = m.group('playlist')
-                self.play_playlist(message)
-                return
-
-        query = song
-        LOG.info("I've been asked to play a particular song.")
-        LOG.info("\tI think the song is: " + song)
-        if artist:
-            query += ' artist:' + artist
-            LOG.info("\tI also think the artist is: " + artist)
-
-        if album:
-            query += ' album:' + album
-            LOG.info("\tI also think the album is: " + album)
-
-        LOG.info("The query I want to send to Spotify is: '" + query + "'")
-        res = self.spotify.search(query, type='track')
-        self.play(data=res, data_type='track')
 
     def continue_current_playlist(self, message):
         if self.playback_prerequisits_ok():
@@ -898,20 +839,22 @@ class SpotifySkill(CommonPlaySkill):
         return res
 
     def search_spotify(self, message):
+        """ Intent handler for "search spotify for X". """
+
         utterance = message.data['utterance']
         if len(utterance.split(self.translate('ForAlbum'))) == 2:
-            query = utterance.split(self.translate('ForAlbum'))[1]
-            message.data['album'] = query.strip()
-            self.play_album(message)
+            query = utterance.split(self.translate('ForAlbum'))[1].strip()
+            data = self.spotify.search(query, type='album')
+            self.play(data=data, data_type='album')
         elif len(utterance.split(self.translate('ForArtist'))) == 2:
-            query = utterance.split(self.translate('ForArtist'))[1]
-            message.data['artist'] = query.strip()
-            self.play_something(message)
+            query = utterance.split(self.translate('ForArtist'))[1].strip()
+            data = self.spotify.search(query, type='artist')
+            self.play(data=data, data_type='artist')
         else:
             for_word = ' ' + self.translate('For')
-            query = for_word.join(utterance.split(for_word)[1:])
-            message.data['track'] = query.strip()
-            self.play_song(message)
+            query = for_word.join(utterance.split(for_word)[1:]).strip()
+            data = self.spotify.search(query, type='track')
+            self.play(data=data, data_type='track')
 
     def shuffle_on(self):
         """ Get preferred playback device """
