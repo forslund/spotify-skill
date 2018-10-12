@@ -1,2 +1,0 @@
-suche.*um (?P<SpotifyTitle>.+)
-search.*zum album (?P<SpotifyTitle>.+)
