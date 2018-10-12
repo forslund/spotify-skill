@@ -1,3 +1,0 @@
-use {device} to play {playlist}
-play playlist {playlist} on {device}
-play the playlist {playlist} on {device}
