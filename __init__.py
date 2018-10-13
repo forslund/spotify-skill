@@ -279,7 +279,7 @@ class SpotifySkill(CommonPlaySkill):
         self.__device_list = None
         self.__devices_fetched = 0
         self.OAUTH_ID = 1
-        self.DEFAULT_VOLUME = 65
+        self.DEFAULT_VOLUME = 80
         self._playlists = None
 
     def launch_librespot(self):
