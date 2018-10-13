@@ -275,6 +275,7 @@ class SpotifySkill(CommonPlaySkill):
         self.idle_count = 0
         self.ducking = False
         self.mouth_text = None
+        self.librespot_starting = False
 
         self.__device_list = None
         self.__devices_fetched = 0
@@ -286,6 +287,7 @@ class SpotifySkill(CommonPlaySkill):
         """ Launch the librespot binary for the Mark-1.
         TODO: Discovery mode
         """
+        self.librespot_starting = True
         platform = self.config_core.get('enclosure').get('platform', 'unknown')
         path = self.settings.get('librespot_path', None)
         if platform == 'mycroft_mark_1' and not path:
@@ -304,12 +306,14 @@ class SpotifySkill(CommonPlaySkill):
                 if self.settings['user']:
                     self.speak_dialog("FailedToStart")
                 self.process = None
+                self.librespot_starting = False
                 return
 
             # Lower the volume since max volume sounds terrible on the Mark-1
             dev = self.device_by_name(self.device_name)
             if dev:
                 self.spotify.volume(dev['id'], self.DEFAULT_VOLUME)
+        self.librespot_starting = False
 
     def initialize(self):
         # Make sure the spotify login scheduled event is shutdown
@@ -450,11 +454,9 @@ class SpotifySkill(CommonPlaySkill):
     # Intent handling
 
     def CPS_match_query_phrase(self, phrase):
-        dev = self.get_default_device()
-
         # Not ready to play
-        if not dev:
-            return
+        if not self.playback_prerequisits_ok():
+            return None
 
         if 'spotify' in phrase:
             bonus = 0.1
@@ -470,7 +472,6 @@ class SpotifySkill(CommonPlaySkill):
                 confidence, data = self.generic_query(phrase, bonus)
 
         if data:
-            data['dev'] = dev
             if confidence > 0.9:
                 confidence = CPSMatchLevel.EXACT
             elif confidence > 0.7:
@@ -576,10 +577,22 @@ class SpotifySkill(CommonPlaySkill):
         return None, None
 
     def CPS_start(self, phrase, data):
+        # Wait for librespot to start
+        if self.librespot_starting:
+            self.log.info('Restarting Librespot...')
+            for i in range(10):
+                time.sleep(0.5)
+                if not self.librespot_starting:
+                    break
+            else:
+                self.log.error('LIBRESPOT NOT STARTED')
+
+        dev = self.get_default_device()
+
         if data['type'] == 'continue':
             self.continue_current_playlist(None)
         elif data['type'] == 'playlist':
-            self.start_playlist_playback(data['dev'], data['name'],
+            self.start_playlist_playback(dev, data['name'],
                                          data['data'])
         else:  # artist, album track
             print('playing {}'.format(data['type']))
@@ -694,15 +707,16 @@ class SpotifySkill(CommonPlaySkill):
     def playback_prerequisits_ok(self):
         """ Check that playback is possible, launch client if neccessary. """
         if self.spotify is None:
-            self.speak_dialog('NotAuthorized')
             return False
 
         devs = [d['name'] for d in self.devices]
         if self.process and self.device_name not in devs:
+            self.log.info('Librespot not responding, restarting...')
             self.stop_librespot()
             self.__devices_fetched = 0  # Make sure devices are fetched again
         if not self.process:
-            self.launch_librespot()
+            self.schedule_event(self.launch_librespot, 0,
+                                name='launch_librespot')
         return True
 
     def spotify_play(self, dev_id, uris=None, context_uri=None):
