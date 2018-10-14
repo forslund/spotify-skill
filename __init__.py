@@ -31,7 +31,7 @@ from requests import HTTPError
 from adapt.intent import IntentBuilder
 
 import time
-from subprocess import Popen
+from subprocess import Popen, DEVNULL
 import signal
 from socket import gethostname
 
@@ -295,10 +295,15 @@ class SpotifySkill(CommonPlaySkill):
 
         if (path and self.device_name and
                 'user' in self.settings and 'password' in self.settings):
+
+            # Disable librespot logging if not specifically requested
+            outs = None if 'librespot_log' in self.settings else DEVNULL
+
             # TODO: Error message when provided username/password don't work
             self.process = Popen([path, '-n', self.device_name,
                                   '-u', self.settings['user'],
-                                  '-p', self.settings['password']])
+                                  '-p', self.settings['password']],
+                                  stdout=outs, stderr=outs)
 
             time.sleep(3)  # give libreSpot time to start-up
             if self.process and self.process.poll() is not None:
