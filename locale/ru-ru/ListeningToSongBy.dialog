@@ -1,0 +1,3 @@
+Слушаем песню  {{tracks}} от {{artist}}.
+Сейчас играю песню {{tracks}} от {{artist}}.
+Играем  {{tracks}} от {{artist}}
