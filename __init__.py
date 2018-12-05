@@ -886,32 +886,52 @@ class SpotifySkill(CommonPlaySkill):
     def search_spotify(self, message):
         """ Intent handler for "search spotify for X". """
 
-        dev = self.device_by_name(message.data['ToDevice'])
+        try:
+            dev = self.get_default_device()
+            if not dev:
+                raise NoSpotifyDevicesError
 
-        utterance = message.data['utterance']
-        if len(utterance.split(self.translate('ForAlbum'))) == 2:
-            query = utterance.split(self.translate('ForAlbum'))[1].strip()
-            data = self.spotify.search(query, type='album')
-            self.play(dev, data=data, data_type='album')
-        elif len(utterance.split(self.translate('ForArtist'))) == 2:
-            query = utterance.split(self.translate('ForArtist'))[1].strip()
-            data = self.spotify.search(query, type='artist')
-            self.play(dev, data=data, data_type='artist')
-        else:
-            for_word = ' ' + self.translate('For')
-            query = for_word.join(utterance.split(for_word)[1:]).strip()
-            data = self.spotify.search(query, type='track')
-            self.play(dev, data=data, data_type='track')
+            utterance = message.data['utterance']
+            if len(utterance.split(self.translate('ForAlbum'))) == 2:
+                query = utterance.split(self.translate('ForAlbum'))[1].strip()
+                data = self.spotify.search(query, type='album')
+                self.play(dev, data=data, data_type='album')
+            elif len(utterance.split(self.translate('ForArtist'))) == 2:
+                query = utterance.split(self.translate('ForArtist'))[1].strip()
+                data = self.spotify.search(query, type='artist')
+                self.play(dev, data=data, data_type='artist')
+            else:
+                for_word = ' ' + self.translate('For')
+                query = for_word.join(utterance.split(for_word)[1:]).strip()
+                data = self.spotify.search(query, type='track')
+                self.play(dev, data=data, data_type='track')
+        except NoSpotifyDevicesError:
+            self.log.error("Unable to get a default device while trying "
+                           "to play something.")
+            self.speak_dialog('PlaybackFailed',
+                {'reason': self.translate('NoDevicesAvailable')})
+        except SpotifyNotAuthorizedError:
+            self.speak_dialog('PlaybackFailed',
+                {'reason': self.translate('NotAuthorized')})
+        except PlaylistNotFoundError:
+            self.speak_dialog('PlaybackFailed',
+                {'reason': self.translate('PlaylistNotFound')})
+        except Exception as e:
+            self.speak_dialog('PlaybackFailed', {'reason': str(e)})
 
     def shuffle_on(self):
-        """ Get preferred playback device """
+        """ Turn on shuffling """
         if self.spotify:
             self.spotify.shuffle(True)
+        else:
+            self.speak_dialog('NotAuthorized')
 
     def shuffle_off(self):
-        """ Get preferred playback device """
+        """ Turn off shuffling """
         if self.spotify:
             self.spotify.shuffle(False)
+        else:
+            self.speak_dialog('NotAuthorized')
 
     def __pause(self):
         # if authorized and playback was started by the skill
