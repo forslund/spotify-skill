@@ -294,10 +294,19 @@ class SpotifySkill(CommonPlaySkill):
         LOG.error(e)
         return True
 
+    def librespot_enabled(self):
+        if platform == 'mycroft_mark_1':
+            return True
+        if self.settings.get('librespot_path', None):
+            return True
+        return False
+
     def launch_librespot(self):
         """ Launch the librespot binary for the Mark-1.
         TODO: Discovery mode
         """
+        if not self.librespot_enabled()
+            return
         self.librespot_starting = True
         platform = self.config_core.get('enclosure').get('platform', 'unknown')
         path = self.settings.get('librespot_path', None)
@@ -306,19 +315,19 @@ class SpotifySkill(CommonPlaySkill):
 
         if not path:
             self.librespot_starting = False
-            self.handle_error('No libreSpot path specified')
+            LOG.info('No libreSpot path specified')
             return
         if not self.device_name:
             self.librespot_starting = False
-            self.handle_error('No device name specified')
+            LOG.error('No device name specified')
             return
         if not 'user' in self.settings:
             self.librespot_starting = False
-            self.handle_error('No user name specified')
+            LOG.error('No user name specified')
             return
         if not 'password' in self.settings:
             self.librespot_starting = False
-            self.handle_error('No password specified')
+            LOG.error('No password specified')
             return
 
         # Disable librespot logging if not specifically requested
@@ -371,20 +380,20 @@ class SpotifySkill(CommonPlaySkill):
         password = self.settings.get('password', None)
         # Username or password has changed
         if not username:
-            self.handle_error('No username specified')
+            LOG.error('No username specified')
             return
         if not password:
-            self.handle_error('No password specified')
+            LOG.error('No password specified')
             return
         try:
             self.cancel_scheduled_event('SpotifyLogin')
             self.load_credentials()
             self.launch_librespot()
         except Exception as e:
-            self.speak_dialog('Error', data={'error':e})
+            self.exception(e)
 
         if not self.spotify:
-            self.speak_dialog('NotConnected')
+            LOG.error('Not connected to Spotify')
             return
         self.cancel_scheduled_event('SpotifyLogin')
         if self.process:
@@ -402,7 +411,7 @@ class SpotifySkill(CommonPlaySkill):
             return
 
         if not self.spotify:
-            self.speak_dialog('NotConnected')
+            LOG.error('Not connected to Spotify')
             return
         # Spotfy connection worked, prepare for usage
         # TODO: Repeat occasionally on failures?
@@ -624,7 +633,7 @@ class SpotifySkill(CommonPlaySkill):
         return None, None
 
     def wait_for_librespot(self):
-        ''' Wait for LibreSpot to start '''
+        """ Wait for LibreSpot to start """
         for i in range(10):
             if not self.librespot_starting:
                 break
@@ -634,8 +643,7 @@ class SpotifySkill(CommonPlaySkill):
             self.log.error('LIBRESPOT NOT STARTED')
 
     def CPS_start(self, phrase, data):
-        # Wait for librespot to start
-
+        self.wait_for_librespot()
         dev = self.get_default_device()
 
         if data['type'] == 'continue':
@@ -691,20 +699,14 @@ class SpotifySkill(CommonPlaySkill):
         Returns:
             (dict) None or the matching device's description
         """
+        if not self.devices:
+            return None
         devices = self.devices
-        LOG.debug('name')
-        LOG.debug(name)
-        if devices and len(devices) > 0:
-            # Otherwise get a device with the selected name
-            devices_by_name = {d['name']: d for d in devices}
-            LOG.debug(devices_by_name.keys())
-            key, confidence = match_one(name, list(devices_by_name.keys()))
-            if confidence > 0.3:
-                return devices_by_name[key]
-            LOG.debug(key)
-            LOG.debug(confidence)
-        for device in devices:
-            LOG.debug(device)
+        # Otherwise get a device with the selected name
+        devices_by_name = {d['name']: d for d in devices}
+        key, confidence = match_one(name, list(devices_by_name.keys()))
+        if confidence > 0.5:
+            return devices_by_name[key]
         return None
 
     def get_default_device(self):
@@ -867,7 +869,7 @@ class SpotifySkill(CommonPlaySkill):
                     time.sleep(2)
                     self.spotify_play(dev['id'], uris=uris)
                 else:
-                    LOG.error('wrong data_type %s' % data_type)
+                    LOG.error('wrong data_type {}'.format(data_type))
                     print('wrong data_type')
             except Exception as e:
                 LOG.error("Unable to obtain the name, artist, "
@@ -906,7 +908,7 @@ class SpotifySkill(CommonPlaySkill):
         if search_type == 'genre':
             LOG.info("TODO! Genre")
             return
-        LOG.error('wrongsearch_type %s' % data_type)
+        LOG.error('wrong search_type {}'.format(search_type))
         return
 
     def search_spotify(self, message):
@@ -1038,7 +1040,7 @@ class SpotifySkill(CommonPlaySkill):
             return False
         if not self.spotify.is_playing():
             self.dev_id = None
-            #self.speak_dialog('NotPlaying')
+            self.speak_dialog('NotPlaying')
             LOG.info('Not playing')
             return False
         dev = self.get_default_device()
