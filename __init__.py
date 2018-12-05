@@ -295,6 +295,7 @@ class SpotifySkill(CommonPlaySkill):
         return True
 
     def librespot_enabled(self):
+        platform = self.config_core.get('enclosure').get('platform', 'unknown')
         if platform == 'mycroft_mark_1':
             return True
         if self.settings.get('librespot_path', None):
@@ -305,7 +306,7 @@ class SpotifySkill(CommonPlaySkill):
         """ Launch the librespot binary for the Mark-1.
         TODO: Discovery mode
         """
-        if not self.librespot_enabled()
+        if not self.librespot_enabled():
             return
         self.librespot_starting = True
         platform = self.config_core.get('enclosure').get('platform', 'unknown')
