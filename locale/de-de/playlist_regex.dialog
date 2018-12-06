@@ -1,1 +1,1 @@
-^(play) (?!((the |my |)(song|piece|track|composition)))((.*playlist)|)(?P<playlist>[\w\s]+?)$
+(die|meine) (Spotify |)Playlist (?P<playlist>.+)
