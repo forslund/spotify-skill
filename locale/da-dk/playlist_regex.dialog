@@ -1,0 +1,1 @@
+(min) (spotify |)(playliste|playlisten) (?P<playlist>.+)

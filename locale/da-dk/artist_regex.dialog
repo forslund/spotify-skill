@@ -1,0 +1,1 @@
+(kunstneren|gruppen|bandet|noget med)  (?P<artist>.+)

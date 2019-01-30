@@ -1,0 +1,1 @@
+l' (album|disco) (?P<album>.+)
