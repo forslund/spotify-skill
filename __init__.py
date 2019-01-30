@@ -692,14 +692,15 @@ class SpotifySkill(CommonPlaySkill):
         Arguments:
             playlist (str): Playlist name
 
-        Returns: (str) best match
+        Returns: ((str)best match, (float)confidence)
         """
-        key, confidence = match_one(playlist.lower(),
-                                    list(self.playlists.keys()))
-        if confidence > 0.7:
-            return key, confidence
-        else:
-            return None, 0
+        playlists = list(self.playlists.keys())
+        if len(playlists) > 0:
+            # Only check if the user has playlists
+            key, confidence = match_one(playlist.lower(), playlists)
+            if confidence > 0.7:
+                return key, confidence
+        return None, 0
 
     def continue_current_playlist(self, message):
         if self.playback_prerequisits_ok():
