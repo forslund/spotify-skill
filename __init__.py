@@ -482,7 +482,10 @@ class SpotifySkill(CommonPlaySkill):
         # Not ready to play
         if not self.playback_prerequisits_ok():
             self.log.debug('Spotify is not available to play')
-            return None
+            if 'spotify' in phrase:
+                return phrase, CPSMatchLevel.GENERIC
+            else:
+                return None
 
         if 'spotify' in phrase:
             bonus = 0.1
@@ -605,17 +608,19 @@ class SpotifySkill(CommonPlaySkill):
         return None, None
 
     def CPS_start(self, phrase, data):
-        # Wait for librespot to start
-        if self.librespot_starting:
-            self.log.info('Restarting Librespot...')
-            for i in range(10):
-                time.sleep(0.5)
-                if not self.librespot_starting:
-                    break
-            else:
-                self.log.error('LIBRESPOT NOT STARTED')
-
         try:
+            if not self.spotify:
+                raise SpotifyNotAuthorizedError
+            # Wait for librespot to start
+            if self.librespot_starting:
+                self.log.info('Restarting Librespot...')
+                for i in range(10):
+                    time.sleep(0.5)
+                    if not self.librespot_starting:
+                        break
+                else:
+                    self.log.error('LIBRESPOT NOT STARTED')
+
             dev = self.get_default_device()
             if not dev:
                 raise NoSpotifyDevicesError
