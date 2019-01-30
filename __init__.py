@@ -41,6 +41,23 @@ import random
 
 from mycroft.skills.common_play_skill import CommonPlaySkill, CPSMatchLevel
 
+
+class SpotifyPlaybackError(Exception):
+    pass
+
+
+class NoSpotifyDevicesError(Exception):
+    pass
+
+
+class PlaylistNotFoundError(Exception):
+    pass
+
+
+class SpotifyNotAuthorizedError(Exception):
+    pass
+
+
 def get_token(dev_cred):
     """ Get token with a single retry.
     Args:
@@ -166,6 +183,7 @@ class SpotifyConnect(spotipy.Spotify):
             self._put(path, payload=data)
         except Exception as e:
             LOG.error(e)
+            raise
 
     def pause(self, device):
         """ Pause user's playback on device.
@@ -343,8 +361,10 @@ class SpotifySkill(CommonPlaySkill):
         if not self.spotify and self.settings.get('user', None):
             try:
                 self.load_credentials()
-            except Exception:
-                pass
+            except Exception as e:
+                self.log.debug('Credentials could not be fetched. '
+                              '({})'.format(repr(e)))
+
         if self.spotify:
             self.cancel_scheduled_event('SpotifyLogin')
             if 'user' in self.settings and 'password' in self.settings:
@@ -358,7 +378,7 @@ class SpotifySkill(CommonPlaySkill):
             creds = MycroftSpotifyCredentials(self.OAUTH_ID)
             self.spotify = SpotifyConnect(client_credentials_manager=creds)
         except HTTPError:
-            LOG.info('Couldn\'t fetch credentials')
+            self.log.info('Couldn\'t fetch credentials')
             self.spotify = None
 
         if self.spotify:
@@ -461,7 +481,11 @@ class SpotifySkill(CommonPlaySkill):
     def CPS_match_query_phrase(self, phrase):
         # Not ready to play
         if not self.playback_prerequisits_ok():
-            return None
+            self.log.debug('Spotify is not available to play')
+            if 'spotify' in phrase:
+                return phrase, CPSMatchLevel.GENERIC
+            else:
+                return None
 
         if 'spotify' in phrase:
             bonus = 0.1
@@ -486,6 +510,8 @@ class SpotifySkill(CommonPlaySkill):
             else:
                 confidence = CPSMatchLevel.CATEGORY
             return phrase, confidence, data
+        else:
+            self.log.debug('Couldn\'t find anything to play on Spotify')
 
     def continue_playback(self, phrase, bonus):
         if phrase.strip() == 'spotify':
@@ -582,29 +608,45 @@ class SpotifySkill(CommonPlaySkill):
         return None, None
 
     def CPS_start(self, phrase, data):
-        # Wait for librespot to start
-        if self.librespot_starting:
-            self.log.info('Restarting Librespot...')
-            for i in range(10):
-                time.sleep(0.5)
-                if not self.librespot_starting:
-                    break
-            else:
-                self.log.error('LIBRESPOT NOT STARTED')
+        try:
+            if not self.spotify:
+                raise SpotifyNotAuthorizedError
+            # Wait for librespot to start
+            if self.librespot_starting:
+                self.log.info('Restarting Librespot...')
+                for i in range(10):
+                    time.sleep(0.5)
+                    if not self.librespot_starting:
+                        break
+                else:
+                    self.log.error('LIBRESPOT NOT STARTED')
 
-        dev = self.get_default_device()
+            dev = self.get_default_device()
+            if not dev:
+                raise NoSpotifyDevicesError
 
-        if data['type'] == 'continue':
-            self.continue_current_playlist(None)
-        elif data['type'] == 'playlist':
-            self.start_playlist_playback(dev, data['name'],
-                                         data['data'])
-        else:  # artist, album track
-            print('playing {}'.format(data['type']))
-            try:
-                self.play(data=data['data'], data_type=data['type'])
-            except:
-                self.log.exception()
+            if data['type'] == 'continue':
+                self.continue_current_playlist(dev)
+            elif data['type'] == 'playlist':
+                self.start_playlist_playback(dev, data['name'],
+                                             data['data'])
+            else:  # artist, album track
+                self.log.info('playing {}'.format(data['type']))
+                self.play(dev, data=data['data'], data_type=data['type'])
+
+        except NoSpotifyDevicesError:
+            self.log.error("Unable to get a default device while trying "
+                           "to play something.")
+            self.speak_dialog('PlaybackFailed',
+                {'reason': self.translate('NoDevicesAvailable')})
+        except SpotifyNotAuthorizedError:
+            self.speak_dialog('PlaybackFailed',
+                {'reason': self.translate('NotAuthorized')})
+        except PlaylistNotFoundError:
+            self.speak_dialog('PlaybackFailed',
+                {'reason': self.translate('PlaylistNotFound')})
+        except Exception as e:
+            self.speak_dialog('PlaybackFailed', {'reason': str(e)})
 
     def create_intents(self):
         # Create intents
@@ -702,13 +744,10 @@ class SpotifySkill(CommonPlaySkill):
                 return key, confidence
         return None, 0
 
-    def continue_current_playlist(self, message):
-        if self.playback_prerequisits_ok():
-            dev = self.get_default_device()
-            if dev:
-                self.spotify_play(dev['id'])
-            else:
-                self.speak_dialog('NoDevicesAvailable')
+    def continue_current_playlist(self, dev):
+        """ Send the play command to the selected device. """
+        time.sleep(2)
+        self.spotify_play(dev['id'])
 
     def playback_prerequisits_ok(self):
         """ Check that playback is possible, launch client if neccessary. """
@@ -726,22 +765,22 @@ class SpotifySkill(CommonPlaySkill):
         return True
 
     def spotify_play(self, dev_id, uris=None, context_uri=None):
-        """ Start spotify playback and catch any exceptions. """
+        """ Start spotify playback and log any exceptions. """
         try:
-            LOG.info(u'spotify_play: {}'.format(dev_id))
+            self.log.info(u'spotify_play: {}'.format(dev_id))
             self.spotify.play(dev_id, uris, context_uri)
             self.start_monitor()
             self.dev_id = dev_id
         except spotipy.SpotifyException as e:
             # TODO: Catch other conditions?
-            self.speak_dialog('NotAuthorized')
+            raise SpotifyNotAuthorizedError
         except Exception as e:
-            LOG.exception(e)
-            self.speak_dialog('NotAuthorized')
+            self.log.exception(e)
+            raise
 
     def start_playlist_playback(self, dev, name, uri):
-        if dev and uri:
-            LOG.info(u'playing {} using {}'.format(name, dev['name']))
+        if uri:
+            self.log.info(u'playing {} using {}'.format(name, dev['name']))
             self.speak_dialog('ListeningToPlaylist',
                               data={'playlist': name})
             time.sleep(2)
@@ -749,14 +788,11 @@ class SpotifySkill(CommonPlaySkill):
                                                        uri['id'])
             uris = [t['track']['uri'] for t in tracks['items']]
             self.spotify_play(dev['id'], uris=uris)
-            return True
-        elif not dev:
-            LOG.info('No spotify devices found')
         else:
-            LOG.info('No playlist found')
-        return False
+            self.log.info('No playlist found')
+            raise PlaylistNotFoundError
 
-    def play(self, data, data_type='track', genre_name=None):
+    def play(self, dev, data, data_type='track', genre_name=None):
         """
         Plays the provided data in the manner appropriate for 'data_type'
         If the type is 'genre' then genre_name should be specified to populate
@@ -776,50 +812,46 @@ class SpotifySkill(CommonPlaySkill):
             genre_name (str):   If type is 'genre', also include the genre's
                                 name here, for output purposes. default None
         """
-        dev = self.get_default_device()
-        if dev is None:
-            LOG.error("Unable to get a default device while trying "
-                      "to play something.")
-            self.speak_dialog('NoDevicesAvailable')
-        else:
-            try:
-                if data_type == 'track':
-                    (song, artists, uri) = get_song_info(data)
-                    self.speak_dialog('ListeningToSongBy',
-                                      data={'tracks': song,
-                                            'artist': artists[0]})
-                    time.sleep(2)
-                    self.spotify_play(dev['id'], uris=[uri])
-                elif data_type == 'artist':
-                    (artist, uri) = get_artist_info(data)
-                    self.speak_dialog('ListeningToArtist',
-                                      data={'artist': artist})
-                    time.sleep(2)
-                    self.spotify_play(dev['id'], context_uri=uri)
-                elif data_type == 'album':
-                    (album, artists, uri) = get_album_info(data)
-                    self.speak_dialog('ListeningToAlbumBy',
-                                      data={'album': album,
-                                            'artist': artists[0]})
-                    time.sleep(2)
-                    self.spotify_play(dev['id'], context_uri=uri)
-                elif data_type == 'genre':
-                    items = data['tracks']['items']
-                    random.shuffle(items)
-                    uris = []
-                    for item in items:
-                        uris.append(item['uri'])
-                    datai = {'genre': genre_name, 'track': items[0]['name'],
-                             'artist': items[0]['artists'][0]['name']}
-                    self.speak_dialog('ListeningToGenre', data)
-                    time.sleep(2)
-                    self.spotify_play(dev['id'], uris=uris)
-                else:
-                    print('wrong data_type')
-            except Exception as e:
-                LOG.error("Unable to obtain the name, artist, "
-                          "and/or URI information while asked to play "
-                          "something. " + str(e))
+        try:
+            if data_type == 'track':
+                (song, artists, uri) = get_song_info(data)
+                self.speak_dialog('ListeningToSongBy',
+                                  data={'tracks': song,
+                                        'artist': artists[0]})
+                time.sleep(2)
+                self.spotify_play(dev['id'], uris=[uri])
+            elif data_type == 'artist':
+                (artist, uri) = get_artist_info(data)
+                self.speak_dialog('ListeningToArtist',
+                                  data={'artist': artist})
+                time.sleep(2)
+                self.spotify_play(dev['id'], context_uri=uri)
+            elif data_type == 'album':
+                (album, artists, uri) = get_album_info(data)
+                self.speak_dialog('ListeningToAlbumBy',
+                                  data={'album': album,
+                                        'artist': artists[0]})
+                time.sleep(2)
+                self.spotify_play(dev['id'], context_uri=uri)
+            elif data_type == 'genre':
+                items = data['tracks']['items']
+                random.shuffle(items)
+                uris = []
+                for item in items:
+                    uris.append(item['uri'])
+                data = {'genre': genre_name, 'track': items[0]['name'],
+                        'artist': items[0]['artists'][0]['name']}
+                self.speak_dialog('ListeningToGenre', data)
+                time.sleep(2)
+                self.spotify_play(dev['id'], uris=uris)
+            else:
+                self.log.error('wrong data_type')
+                raise ValueError("Invalid type")
+        except Exception as e:
+            self.log.error("Unable to obtain the name, artist, "
+                           "and/or URI information while asked to play "
+                           "something. " + str(e))
+            raise
 
     def search(self, query, search_type):
         """ Search for an album, playlist or artist.
@@ -840,18 +872,18 @@ class SpotifySkill(CommonPlaySkill):
         if search_type == 'album':
             if len(result['albums']['items']) > 0:
                 album = result['albums']['items'][0]
-                LOG.info(album)
+                self.log.info(album)
                 res = album
         elif search_type == 'artist':
-            LOG.info(result['artists'])
+            self.log.info(result['artists'])
             if len(result['artists']['items']) > 0:
                 artist = result['artists']['items'][0]
-                LOG.info(artist)
+                self.log.info(artist)
                 res = artist
         elif search_type == 'genre':
-            LOG.info("TODO! Genre")
+            self.log.debug("TODO! Genre")
         else:
-            LOG.info('ERROR')
+            self.log.error('Search type {} not supported'.format(search_type))
             return
 
         return res
@@ -859,35 +891,57 @@ class SpotifySkill(CommonPlaySkill):
     def search_spotify(self, message):
         """ Intent handler for "search spotify for X". """
 
-        utterance = message.data['utterance']
-        if len(utterance.split(self.translate('ForAlbum'))) == 2:
-            query = utterance.split(self.translate('ForAlbum'))[1].strip()
-            data = self.spotify.search(query, type='album')
-            self.play(data=data, data_type='album')
-        elif len(utterance.split(self.translate('ForArtist'))) == 2:
-            query = utterance.split(self.translate('ForArtist'))[1].strip()
-            data = self.spotify.search(query, type='artist')
-            self.play(data=data, data_type='artist')
-        else:
-            for_word = ' ' + self.translate('For')
-            query = for_word.join(utterance.split(for_word)[1:]).strip()
-            data = self.spotify.search(query, type='track')
-            self.play(data=data, data_type='track')
+        try:
+            dev = self.get_default_device()
+            if not dev:
+                raise NoSpotifyDevicesError
+
+            utterance = message.data['utterance']
+            if len(utterance.split(self.translate('ForAlbum'))) == 2:
+                query = utterance.split(self.translate('ForAlbum'))[1].strip()
+                data = self.spotify.search(query, type='album')
+                self.play(dev, data=data, data_type='album')
+            elif len(utterance.split(self.translate('ForArtist'))) == 2:
+                query = utterance.split(self.translate('ForArtist'))[1].strip()
+                data = self.spotify.search(query, type='artist')
+                self.play(dev, data=data, data_type='artist')
+            else:
+                for_word = ' ' + self.translate('For')
+                query = for_word.join(utterance.split(for_word)[1:]).strip()
+                data = self.spotify.search(query, type='track')
+                self.play(dev, data=data, data_type='track')
+        except NoSpotifyDevicesError:
+            self.log.error("Unable to get a default device while trying "
+                           "to play something.")
+            self.speak_dialog('PlaybackFailed',
+                {'reason': self.translate('NoDevicesAvailable')})
+        except SpotifyNotAuthorizedError:
+            self.speak_dialog('PlaybackFailed',
+                {'reason': self.translate('NotAuthorized')})
+        except PlaylistNotFoundError:
+            self.speak_dialog('PlaybackFailed',
+                {'reason': self.translate('PlaylistNotFound')})
+        except Exception as e:
+            self.speak_dialog('PlaybackFailed', {'reason': str(e)})
 
     def shuffle_on(self):
-        """ Get preferred playback device """
+        """ Turn on shuffling """
         if self.spotify:
             self.spotify.shuffle(True)
+        else:
+            self.speak_dialog('NotAuthorized')
 
     def shuffle_off(self):
-        """ Get preferred playback device """
+        """ Turn off shuffling """
         if self.spotify:
             self.spotify.shuffle(False)
+        else:
+            self.speak_dialog('NotAuthorized')
 
     def __pause(self):
         # if authorized and playback was started by the skill
         if self.spotify:
-            LOG.info('Pausing Spotify...')
+            self.log.info('Pausing Spotify...')
             self.spotify.pause(self.dev_id)
 
     def pause(self, message=None):
@@ -899,7 +953,7 @@ class SpotifySkill(CommonPlaySkill):
         """ Handler for playback control resume. """
         # if authorized and playback was started by the skill
         if self.spotify:
-            LOG.info('Resume Spotify')
+            self.log.info('Resume Spotify')
             if not self.dev_id:
                 self.dev_id = self.get_default_device()
             self.spotify_play(self.dev_id)
@@ -908,7 +962,7 @@ class SpotifySkill(CommonPlaySkill):
         """ Handler for playback control next. """
         # if authorized and playback was started by the skill
         if self.spotify and self.dev_id:
-            LOG.info('Next Spotify track')
+            self.log.info('Next Spotify track')
             self.spotify.next(self.dev_id)
             self.start_monitor()
             return True
@@ -918,7 +972,7 @@ class SpotifySkill(CommonPlaySkill):
         """ Handler for playback control prev. """
         # if authorized and playback was started by the skill
         if self.spotify and self.dev_id:
-            LOG.info('Previous Spotify track')
+            self.log.info('Previous Spotify track')
             self.spotify.prev(self.dev_id)
             self.start_monitor()
 
@@ -946,7 +1000,15 @@ class SpotifySkill(CommonPlaySkill):
         if self.spotify and self.spotify.is_playing():
             dev = self.device_by_name(message.data['ToDevice'])
             if dev:
+                self.log.info('Transfering playback to {}'.format(dev['name']))
                 self.spotify.transfer_playback(dev['id'])
+            else:
+                self.speak_dialog('DeviceNotFound',
+                                  {'name': message.data['ToDevice']})
+        elif not self.spotify:
+            self.speak_dialog('NotAuthorized')
+        else:
+            self.speak_dialog('NothingPlaying')
 
     def stop(self):
         """ Stop playback. """
