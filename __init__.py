@@ -29,7 +29,8 @@ from requests import HTTPError
 from adapt.intent import IntentBuilder
 
 import time
-from subprocess import Popen, DEVNULL
+from os.path import abspath, dirname, join
+from subprocess import call, Popen, DEVNULL
 import signal
 from socket import gethostname
 
@@ -54,6 +55,16 @@ class PlaylistNotFoundError(Exception):
 
 class SpotifyNotAuthorizedError(Exception):
     pass
+
+
+MANAGED_PLATFORMS = ['mycroft_mark_1']
+
+
+def update_librespot():
+    try:
+        call(["bash", join(dirname(abspath(__file__)), "requirements.sh")])
+    except Exception as e:
+        print('Librespot Update failed, {}'.format(repr(e)))
 
 
 class SpotifySkill(CommonPlaySkill):
@@ -129,6 +140,9 @@ class SpotifySkill(CommonPlaySkill):
         self.schedule_repeating_event(self.on_websettings_changed,
                                       None, 5*60,
                                       name='SpotifyLogin')
+        platform = self.config_core.get('enclosure').get('platform', 'unknown')
+        if platform in MANAGED_PLATFORMS:
+            update_librespot()
         self.on_websettings_changed()
 
     def on_websettings_changed(self):
