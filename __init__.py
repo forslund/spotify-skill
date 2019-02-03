@@ -322,7 +322,7 @@ class SpotifySkill(CommonPlaySkill):
             playlist, conf = self.get_best_playlist(match.groupdict()['playlist'])
             confidence = min(conf + bonus, 1.0)
             if not playlist:
-                return
+                return None, None
             uri = self.playlists[playlist]
             return (conf,
                     {
