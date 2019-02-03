@@ -57,7 +57,11 @@ class SpotifyNotAuthorizedError(Exception):
     pass
 
 
+# Platforms for which the skill should start the spotify player
 MANAGED_PLATFORMS = ['mycroft_mark_1']
+# Return value definition indication nothing was found
+# (confidence None, data None)
+NOTHING_FOUND = (None, None)
 
 
 def update_librespot():
@@ -269,6 +273,7 @@ class SpotifySkill(CommonPlaySkill):
     # Intent handling
 
     def CPS_match_query_phrase(self, phrase):
+        """ Handler for common play framework Query. """
         # Not ready to play
         if not self.playback_prerequisits_ok():
             self.log.debug('Spotify is not available to play')
@@ -312,9 +317,20 @@ class SpotifySkill(CommonPlaySkill):
                         'type': 'continue'
                     })
         else:
-            return None, None
+            return NOTHING_FOUND
 
     def specific_query(self, phrase, bonus):
+        """ Check if the phrase can be matched against a specific spotify
+            request.
+
+            This includes asking for playlists, albums, artists or songs.
+
+            Arguments:
+                phrase (str): Text to match against
+                bonus (float): Any existing match bonus
+
+            Returns: Tuple with confidence and data or NOTHING_FOUND
+        """
         # Check if playlist
         match = re.match(self.translate('playlist_regex'), phrase)
         if match:
@@ -322,7 +338,7 @@ class SpotifySkill(CommonPlaySkill):
             playlist, conf = self.get_best_playlist(match.groupdict()['playlist'])
             confidence = min(conf + bonus, 1.0)
             if not playlist:
-                return
+                return NOTHING_FOUND
             uri = self.playlists[playlist]
             return (conf,
                     {
@@ -363,9 +379,20 @@ class SpotifySkill(CommonPlaySkill):
                             'name': None,
                             'type': 'track'
                         })
-        return None, None
+        return NOTHING_FOUND
 
     def generic_query(self, phrase, bonus):
+        """ Check for a generic query, not asking for any special feature.
+
+            This will parse the entire requested string against a playlist
+            first and foremost and an album secondly.
+
+            Arguments:
+                phrase (str): Text to match against
+                bonus (float): Any existing match bonus
+
+            Returns: Tuple with confidence and data or NOTHING_FOUND
+        """
         playlist, conf = self.get_best_playlist(phrase)
         if conf > 0.5:
             uri = self.playlists[playlist]
@@ -379,6 +406,16 @@ class SpotifySkill(CommonPlaySkill):
             return self.query_album(phrase, bonus)
 
     def query_album(self, album, bonus):
+        """ Try to find an album.
+
+            Searches Spotify by album and artist if available.
+
+            Arguments:
+                album (str): Album to search for
+                bonus (float): Any bonus to apply to the confidence
+
+            Returns: Tuple with confidence and data or NOTHING_FOUND
+        """
         data = None
         by_word = ' {} '.format(self.translate('by'))
         if len(album.split(by_word)) > 1:
@@ -395,9 +432,10 @@ class SpotifySkill(CommonPlaySkill):
                         'name': None,
                         'type': 'album'
                     })
-        return None, None
+        return NOTHING_FOUND
 
     def CPS_start(self, phrase, data):
+        """ Handler for common play framework start playback request. """
         try:
             if not self.spotify:
                 raise SpotifyNotAuthorizedError
