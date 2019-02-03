@@ -57,7 +57,11 @@ class SpotifyNotAuthorizedError(Exception):
     pass
 
 
+# Platforms for which the skill should start the spotify player
 MANAGED_PLATFORMS = ['mycroft_mark_1']
+# Return value definition indication nothing was found
+# (confidence None, data None)
+NOTHING_FOUND = (None, None)
 
 
 def update_librespot():
@@ -312,7 +316,7 @@ class SpotifySkill(CommonPlaySkill):
                         'type': 'continue'
                     })
         else:
-            return None, None
+            return NOTHING_FOUND
 
     def specific_query(self, phrase, bonus):
         # Check if playlist
@@ -322,7 +326,7 @@ class SpotifySkill(CommonPlaySkill):
             playlist, conf = self.get_best_playlist(match.groupdict()['playlist'])
             confidence = min(conf + bonus, 1.0)
             if not playlist:
-                return None, None
+                return NOTHING_FOUND
             uri = self.playlists[playlist]
             return (conf,
                     {
@@ -363,7 +367,7 @@ class SpotifySkill(CommonPlaySkill):
                             'name': None,
                             'type': 'track'
                         })
-        return None, None
+        return NOTHING_FOUND
 
     def generic_query(self, phrase, bonus):
         playlist, conf = self.get_best_playlist(phrase)
@@ -395,7 +399,7 @@ class SpotifySkill(CommonPlaySkill):
                         'name': None,
                         'type': 'album'
                     })
-        return None, None
+        return NOTHING_FOUND
 
     def CPS_start(self, phrase, data):
         try:
