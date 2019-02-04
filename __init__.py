@@ -200,8 +200,8 @@ class SpotifySkill(CommonPlaySkill):
 
         TODO: Evaluate the Idle check logic
         """
-        if self.spotify.is_playing() and self.is_player_remote and
-                self.settings.get('use_ducking', False):
+        if (self.spotify.is_playing() and self.is_player_remote and
+                self.settings.get('use_ducking', False)):
             self.__pause()
             self.ducking = True
 
