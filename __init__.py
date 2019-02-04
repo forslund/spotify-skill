@@ -83,6 +83,7 @@ class SpotifySkill(CommonPlaySkill):
         self.dev_id = None
         self.idle_count = 0
         self.ducking = False
+        self.is_player_remote = False   # when dev is remote control instance
         self.mouth_text = None
         self.librespot_starting = False
 
@@ -185,6 +186,14 @@ class SpotifySkill(CommonPlaySkill):
             # been connected
             self.device_name = DeviceApi().get().get('name')
 
+    def failed_auth(self):
+        if not self.settings["user"]:
+            # Assume this is initial setup
+            self.speak_dialog('NotConfigured')
+        else:
+            # Assume password changed or there is a typo
+            self.speak_dialog('NotAuthorized')
+
     ######################################################################
     # Handle auto ducking when listener is started.
 
@@ -195,8 +204,8 @@ class SpotifySkill(CommonPlaySkill):
 
         TODO: Evaluate the Idle check logic
         """
-        if self.spotify.is_playing() and \
-                self.settings.get('use_ducking', False):
+        if (self.spotify.is_playing() and self.is_player_remote and
+                self.settings.get('use_ducking', False)):
             self.__pause()
             self.ducking = True
 
@@ -468,8 +477,7 @@ class SpotifySkill(CommonPlaySkill):
             self.speak_dialog('PlaybackFailed',
                 {'reason': self.translate('NoDevicesAvailable')})
         except SpotifyNotAuthorizedError:
-            self.speak_dialog('PlaybackFailed',
-                {'reason': self.translate('NotAuthorized')})
+            self.failed_auth()
         except PlaylistNotFoundError:
             self.speak_dialog('PlaybackFailed',
                 {'reason': self.translate('PlaylistNotFound')})
@@ -541,15 +549,19 @@ class SpotifySkill(CommonPlaySkill):
             dev = None
             if default_device:
                 dev = self.device_by_name(default_device)
+                self.is_player_remote = True
             # if not set or missing try playing on this device
             if not dev:
                 dev = self.device_by_name(self.device_name)
+                self.is_player_remote = False
             # if not check if a desktop spotify client is playing
             if not dev:
                 dev = self.device_by_name(gethostname())
+                self.is_player_remote = False
             # use first best device if none of the prioritized works
             if not dev and len(self.devices) > 0:
                 dev = self.devices[0]
+                self.is_player_remote = True  # ?? Guessing it is remote
             if dev and not dev['is_active']:
                 self.spotify.transfer_playback(dev['id'], False)
             return dev
@@ -757,14 +769,14 @@ class SpotifySkill(CommonPlaySkill):
         if self.spotify:
             self.spotify.shuffle(True)
         else:
-            self.speak_dialog('NotAuthorized')
+            self.failed_auth()
 
     def shuffle_off(self):
         """ Turn off shuffling """
         if self.spotify:
             self.spotify.shuffle(False)
         else:
-            self.speak_dialog('NotAuthorized')
+            self.failed_auth()
 
     def __pause(self):
         # if authorized and playback was started by the skill
@@ -819,7 +831,7 @@ class SpotifySkill(CommonPlaySkill):
             else:
                 self.speak_dialog('NoDevicesAvailable')
         else:
-            self.speak_dialog('NotAuthorized')
+            self.failed_auth()
 
     @intent_handler(IntentBuilder('').require('Transfer').require('Spotify')
                                      .require('ToDevice'))
@@ -834,7 +846,7 @@ class SpotifySkill(CommonPlaySkill):
                 self.speak_dialog('DeviceNotFound',
                                   {'name': message.data['ToDevice']})
         elif not self.spotify:
-            self.speak_dialog('NotAuthorized')
+            self.failed_auth()
         else:
             self.speak_dialog('NothingPlaying')
 

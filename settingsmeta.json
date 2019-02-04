@@ -8,7 +8,7 @@
                     {
                         "type": "label",
                         "value": "",
-                        "label": "You must connect to a Spotify Premium account to access music.  Provide your Spotify username/password and then Connect with the button below.<p/>"
+                        "label": "You must have a Spotify Premium account to access music.  Provide your Spotify username/password and then Connect with the button below.<p/>"
                     },
                     {
                         "name": "user",
@@ -23,48 +23,48 @@
                         "label": "Password",
                         "value": ""
                     },
-                    {
-                        "name": "Spotify",
-                        "type": "oauth",
-                        "value": 1
-                    }
-                ]
-            },
-            {
-                "name": "Spotify Device",
-                "fields": [
-                    {
-                        "type": "label",
-                        "value": "",
-                        "label": "If you want the skill to default to a specific Spotify device set it below. If not set the player on the Mycroft unit will be used<p/>"
-                    },
-                    {
-                        "name": "default_device",
-                        "type": "text",
-                        "label": "Spotify Device",
-                        "value": "",
-                        "placeholder": ""
-                    }
-                ]
-            },
-            {
-                "name": "Audio Ducking",
-                "fields": [
-                    {
-                        "type": "label",
-                        "value": "",
-                        "label": "Pause Spotify when wakeword is detected<p/>"
-                    },
-                    {
-                        "name": "use_ducking",
-                        "type": "checkbox",
-                        "label": "Use audio ducking",
-                        "value": "false",
-                        "placeholder": ""
-                    }
-                ]
-            }
-
+          {
+            "type": "label",
+            "value": "",
+            "label": "Click the Save button at the top of your screen, then use the Connect button to authorize with Spotify<p/>"
+          },
+          {
+            "name": "Spotify",
+            "type": "oauth",
+            "value": 1
+          }
         ]
-    }
+      },
+      {
+        "name": "Remote Control Device",
+        "fields": [
+          {
+            "type": "label",
+            "value": "",
+            "label": "Playback normally occurs using Mycroft's speaker.  You can also use another Spotify device for playback and remotely control it using Mycroft.<p/>"
+          },
+          {
+            "name": "default_device",
+            "type": "text",
+            "label": "Spotify device",
+            "value": "",
+            "placeholder": "default (Mycroft's speaker)"
+          },
+          {
+            "type": "label",
+            "value": "",
+            "label": "Pause remote music when Mycroft is listening or talking.<p/>"
+          },
+          {
+            "name": "use_ducking",
+            "type": "checkbox",
+            "label": "Auto-pause",
+            "value": "false",
+            "placeholder": ""
+          }
+        ]
+      }
+    ]
+  }
 }
+
