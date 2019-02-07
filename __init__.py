@@ -869,7 +869,8 @@ class SpotifySkill(CommonPlaySkill):
         if self.process and self.process.poll() is None:
             self.process.send_signal(signal.SIGTERM)
             self.process.communicate()  # Communicate to remove zombie
-            self.process = None
+
+        self.process = None
 
     def shutdown(self):
         """ Remove the monitor at shutdown. """
