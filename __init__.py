@@ -34,6 +34,7 @@ from subprocess import call, Popen, DEVNULL
 import signal
 from socket import gethostname
 
+import spotipy
 from .spotify import (MycroftSpotifyCredentials, SpotifyConnect,
                       get_album_info, get_artist_info, get_song_info)
 import random
