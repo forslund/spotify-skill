@@ -781,7 +781,7 @@ class SpotifySkill(CommonPlaySkill):
 
     def __pause(self):
         # if authorized and playback was started by the skill
-        if self.spotify:
+        if self.spotify and self.dev_id:
             self.log.info('Pausing Spotify...')
             self.spotify.pause(self.dev_id)
 
@@ -793,10 +793,8 @@ class SpotifySkill(CommonPlaySkill):
     def resume(self, message=None):
         """ Handler for playback control resume. """
         # if authorized and playback was started by the skill
-        if self.spotify:
+        if self.spotify and self.dev_id:
             self.log.info('Resume Spotify')
-            if not self.dev_id:
-                self.dev_id = self.get_default_device()
             self.spotify_play(self.dev_id)
 
     def next_track(self, message):
@@ -854,15 +852,21 @@ class SpotifySkill(CommonPlaySkill):
     def stop(self):
         """ Stop playback. """
         if self.spotify and self.spotify.is_playing():
-            dev = self.get_default_device()
-            self.dev_id = dev['id']
             if self.dev_id:
-                self.pause(None)
+                try:
+                    self.pause(None)
+                except Exception as e:
+                    self.log.error('Pause failed: {}'.format(repr(e)))
+                    dev = self.get_default_device()
+                    if dev:
+                        self.log.info('Retrying with {}'.format(dev['name']))
+                        self.dev_id = dev['id']
+                        self.pause(None)
 
                 # Clear playing device id
                 self.dev_id = None
                 return True
-        self.dev_id = None
+            self.dev_id = None
         return False
 
     def stop_librespot(self):
