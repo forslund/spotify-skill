@@ -93,6 +93,16 @@ class SpotifySkill(CommonPlaySkill):
         self.OAUTH_ID = 1
         self.DEFAULT_VOLUME = 80
         self._playlists = None
+        self.regexes = {}
+
+    def translate_regex(self, regex):
+        if regex not in self.regexes:
+            path = self.find_resource(regex + '.regex')
+            if path:
+                with open(path) as f:
+                    string = f.read().strip()
+                self.regexes[regex] = string
+        return self.regexes[regex]
 
     def launch_librespot(self):
         """ Launch the librespot binary for the Mark-1.
@@ -342,7 +352,7 @@ class SpotifySkill(CommonPlaySkill):
             Returns: Tuple with confidence and data or NOTHING_FOUND
         """
         # Check if playlist
-        match = re.match(self.translate('playlist_regex'), phrase)
+        match = re.match(self.translate_regex('playlist'), phrase)
         if match:
             bonus += 0.1
             playlist, conf = self.get_best_playlist(match.groupdict()['playlist'])
@@ -357,14 +367,14 @@ class SpotifySkill(CommonPlaySkill):
                         'type': 'playlist'
                     })
         # Check album
-        match = re.match(self.translate('album_regex'), phrase)
+        match = re.match(self.translate_regex('album'), phrase)
         if match:
             bonus += 0.1
             album = match.groupdict()['album']
             return self.query_album(album, bonus)
 
         # Check artist
-        match = re.match(self.translate('artist_regex'), phrase)
+        match = re.match(self.translate_regex('artist'), phrase)
         if match:
             bonus += 0.1
             artist = match.groupdict()['artist']
@@ -427,6 +437,7 @@ class SpotifySkill(CommonPlaySkill):
             Returns: Tuple with confidence and data or NOTHING_FOUND
         """
         data = None
+        by_word = ' {} '.format(self.translate('by'))
         by_word = ' {} '.format(self.translate('by'))
         if len(album.split(by_word)) > 1:
             album, artist = album.split(by_word)
