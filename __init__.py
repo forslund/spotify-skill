@@ -306,15 +306,30 @@ class SpotifySkill(CommonPlaySkill):
                 confidence, data = self.generic_query(phrase, bonus)
 
         if data:
-            if confidence > 0.9:
-                confidence = CPSMatchLevel.EXACT
-            elif confidence > 0.7:
-                confidence = CPSMatchLevel.MULTI_KEY
-            elif confidence > 0.5:
-                confidence = CPSMatchLevel.TITLE
+            self.log.info("Spotify confidence: "+str(confidence))
+            self.log.info("              data: "+str(data))
+
+            if data.get('type') in ['album', 'artist', 'track', 'playlist']:
+                if bonus > 0:
+                    # " play great song on spotify'
+                    level = CPSMatchLevel.EXACT
+                else:
+                    if confidence > 0.9:
+                        level = CPSMatchLevel.MULTI_KEY
+                    else:
+                        level = CPSMatchLevel.TITLE
+            elif data.get('type') == 'continue':
+                if bonus > 0:
+                    # "resume playback on spotify"
+                    level = CPSMatchLevel.EXACT
+                else:
+                    # "resume playback"
+                    level = CPSMatchLevel.GENERIC
             else:
-                confidence = CPSMatchLevel.CATEGORY
-            return phrase, confidence, data
+                self.log.warning('Unexpected spotify type: {}'.format(data.get('type')))
+                level = CPSMatchLevel.GENERIC
+
+            return phrase, level, data
         else:
             self.log.debug('Couldn\'t find anything to play on Spotify')
 
