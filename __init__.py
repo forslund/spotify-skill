@@ -388,7 +388,7 @@ class SpotifySkill(CommonPlaySkill):
                             'name': None,
                             'type': 'artist'
                         })
-        match = re.match(self.translate('song_regex'), phrase)
+        match = re.match(self.translate_regex('song'), phrase)
         if match:
             data = self.spotify.search(match.groupdict()['track'],
                                        type='track')
