@@ -329,6 +329,8 @@ class SpotifySkill(CommonPlaySkill):
                         # TODO: After 19.02 scoring change
                         # level = CPSMatchLevel.MULTI_KEY
                         level = CPSMatchLevel.TITLE
+                    elif confidence < 0.5:
+                        level = CPSMatchLevel.GENERIC
                     else:
                         level = CPSMatchLevel.TITLE
                     phrase += " on spotify"
