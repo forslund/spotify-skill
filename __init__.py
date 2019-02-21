@@ -303,11 +303,8 @@ class SpotifySkill(CommonPlaySkill):
             else:
                 return None
 
-        if 'spotify' in phrase:
-            bonus = 0.1
-        else:
-            bonus = 0
-
+        spotify_specified = 'spotify' in phrase
+        bonus = 0.1 if spotify_specified else 0.0
         phrase = re.sub(self.translate_regex('on_spotify'), '', phrase)
 
         confidence, data = self.continue_playback(phrase, bonus)
@@ -317,11 +314,11 @@ class SpotifySkill(CommonPlaySkill):
                 confidence, data = self.generic_query(phrase, bonus)
 
         if data:
-            self.log.info("Spotify confidence: "+str(confidence))
-            self.log.info("              data: "+str(data))
+            self.log.info('Spotify confidence: {}'.format(confidence))
+            self.log.info('              data: {}'.format(data))
 
             if data.get('type') in ['album', 'artist', 'track', 'playlist']:
-                if bonus > 0:
+                if spotify_specified:
                     # " play great song on spotify'
                     level = CPSMatchLevel.EXACT
                 else:
@@ -333,15 +330,15 @@ class SpotifySkill(CommonPlaySkill):
                         level = CPSMatchLevel.GENERIC
                     else:
                         level = CPSMatchLevel.TITLE
-                    phrase += " on spotify"
+                    phrase += ' on spotify'
             elif data.get('type') == 'continue':
-                if bonus > 0:
+                if spotify_specified > 0:
                     # "resume playback on spotify"
                     level = CPSMatchLevel.EXACT
                 else:
                     # "resume playback"
                     level = CPSMatchLevel.GENERIC
-                    phrase += " on spotify"
+                    phrase += ' on spotify'
             else:
                 self.log.warning('Unexpected spotify type: {}'.format(data.get('type')))
                 level = CPSMatchLevel.GENERIC
