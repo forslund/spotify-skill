@@ -308,7 +308,7 @@ class SpotifySkill(CommonPlaySkill):
         else:
             bonus = 0
 
-        phrase = re.sub(self.translate('on_spotify_regex'), '', phrase)
+        phrase = re.sub(self.translate_regex('on_spotify'), '', phrase)
 
         confidence, data = self.continue_playback(phrase, bonus)
         if not data:
