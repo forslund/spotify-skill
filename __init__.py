@@ -325,9 +325,12 @@ class SpotifySkill(CommonPlaySkill):
                     level = CPSMatchLevel.EXACT
                 else:
                     if confidence > 0.9:
-                        level = CPSMatchLevel.MULTI_KEY
+                        # TODO: After 19.02 scoring change
+                        # level = CPSMatchLevel.MULTI_KEY
+                        level = CPSMatchLevel.TITLE
                     else:
                         level = CPSMatchLevel.TITLE
+                    phrase += " on spotify"
             elif data.get('type') == 'continue':
                 if bonus > 0:
                     # "resume playback on spotify"
@@ -335,6 +338,7 @@ class SpotifySkill(CommonPlaySkill):
                 else:
                     # "resume playback"
                     level = CPSMatchLevel.GENERIC
+                    phrase += " on spotify"
             else:
                 self.log.warning('Unexpected spotify type: {}'.format(data.get('type')))
                 level = CPSMatchLevel.GENERIC
