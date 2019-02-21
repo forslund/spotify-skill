@@ -87,6 +87,7 @@ class SpotifySkill(CommonPlaySkill):
         self.is_player_remote = False   # when dev is remote control instance
         self.mouth_text = None
         self.librespot_starting = False
+        self.librespot_failed = False
 
         self.__device_list = None
         self.__devices_fetched = 0
@@ -130,7 +131,7 @@ class SpotifySkill(CommonPlaySkill):
             if self.process and self.process.poll() is not None:
                 # libreSpot shut down immediately.  Bad user/password?
                 if self.settings['user']:
-                    self.speak_dialog("FailedToStart")
+                    self.librespot_failed = True
                 self.process = None
                 self.librespot_starting = False
                 return
@@ -503,10 +504,14 @@ class SpotifySkill(CommonPlaySkill):
                 self.play(dev, data=data['data'], data_type=data['type'])
 
         except NoSpotifyDevicesError:
-            self.log.error("Unable to get a default device while trying "
-                           "to play something.")
-            self.speak_dialog('PlaybackFailed',
-                {'reason': self.translate('NoDevicesAvailable')})
+            if self.librespot_failed:
+                self.speak_dialog('FailedToStart')
+                self.librespot_failed = False
+            else:
+                self.log.error("Unable to get a default device while trying "
+                               "to play something.")
+                self.speak_dialog('PlaybackFailed',
+                    {'reason': self.translate('NoDevicesAvailable')})
         except SpotifyNotAuthorizedError:
             self.failed_auth()
         except PlaylistNotFoundError:
