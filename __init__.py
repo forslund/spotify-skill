@@ -409,15 +409,8 @@ class SpotifySkill(CommonPlaySkill):
                         })
         match = re.match(self.translate_regex('song'), phrase)
         if match:
-            data = self.spotify.search(match.groupdict()['track'],
-                                       type='track')
-            if data:
-                return (1.0,
-                        {
-                            'data': data,
-                            'name': None,
-                            'type': 'track'
-                        })
+            song = match.groupdict()['track']
+            return self.query_song(song, bonus)
         return NOTHING_FOUND
 
     def generic_query(self, phrase, bonus):
@@ -457,7 +450,6 @@ class SpotifySkill(CommonPlaySkill):
         """
         data = None
         by_word = ' {} '.format(self.translate('by'))
-        by_word = ' {} '.format(self.translate('by'))
         if len(album.split(by_word)) > 1:
             album, artist = album.split(by_word)
             album='*{}* artist:{}'.format(album, artist)
@@ -471,6 +463,33 @@ class SpotifySkill(CommonPlaySkill):
                         'data': data,
                         'name': None,
                         'type': 'album'
+                    })
+        return NOTHING_FOUND
+
+    def query_song(self, song, bonus):
+        """ Try to find a song.
+
+            Searches Spotify for song and artist if provided.
+
+            Arguments:
+                song (str): Song to search for
+                bonus (float): Any bonus to apply to the confidence
+
+            Returns: Tuple with confidence and data or NOTHING_FOUND
+        """
+        data = None
+        by_word = ' {} '.format(self.translate('by'))
+        if len(song.split(by_word)) > 1:
+            song, artist = song.split(by_word)
+            song='*{}* artist:{}'.format(song, artist)
+
+        data = self.spotify.search(song, type='track')
+        if data:
+            return (1.0,
+                    {
+                        'data': data,
+                        'name': None,
+                        'type': 'track'
                     })
         return NOTHING_FOUND
 
