@@ -577,6 +577,7 @@ class SpotifySkill(CommonPlaySkill):
         self.register_intent_file('WhatSong.intent', self.song_info)
         self.register_intent_file('WhatAlbum.intent', self.album_info)
         self.register_intent_file('WhatArtist.intent', self.artist_info)
+        self.register_intent_file('StopMusic.intent', self.handle_stop)
         time.sleep(0.5)
         self.disable_playing_intents()
 
@@ -584,11 +585,13 @@ class SpotifySkill(CommonPlaySkill):
         self.enable_intent('WhatSong.intent')
         self.enable_intent('WhatAlbum.intent')
         self.enable_intent('WhatArtist.intent')
+        self.enable_intent('StopMusic.intent')
 
     def disable_playing_intents(self):
         self.disable_intent('WhatSong.intent')
         self.disable_intent('WhatAlbum.intent')
         self.disable_intent('WhatArtist.intent')
+        self.disable_intent('StopMusic.intent')
 
     @property
     def playlists(self):
@@ -967,6 +970,9 @@ class SpotifySkill(CommonPlaySkill):
             self.failed_auth()
         else:
             self.speak_dialog('NothingPlaying')
+
+    def handle_stop(self, message):
+        self.stop()
 
     def stop(self):
         """ Stop playback. """
