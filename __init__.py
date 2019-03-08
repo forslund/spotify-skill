@@ -72,6 +72,30 @@ def update_librespot():
         print('Librespot Update failed, {}'.format(repr(e)))
 
 
+def status_info(status):
+    """ Return track, artist, album tuple from spotify status.
+
+        Arguments:
+            status (dict): Spotify status info
+
+        Returns:
+            tuple (track, artist, album)
+     """
+    try:
+        artist = status['item']['artists'][0]['name']
+    except:
+        artist = 'unknown'
+    try:
+        track = status['item']['name']
+    except:
+        track = 'unknown'
+    try:
+        album = status['item']['album']['name']
+    except:
+        album = 'unknown'
+    return track, artist, album
+
+
 class SpotifySkill(CommonPlaySkill):
     """Spotify control through the Spotify Connect API."""
 
@@ -95,6 +119,7 @@ class SpotifySkill(CommonPlaySkill):
         self.DEFAULT_VOLUME = 80
         self._playlists = None
         self.regexes = {}
+        self.last_played_type = None # The last uri type that was started
 
     def translate_regex(self, regex):
         if regex not in self.regexes:
@@ -268,11 +293,11 @@ class SpotifySkill(CommonPlaySkill):
     def _update_display(self, message):
         # Checks once a second for feedback
         status = self.spotify.status() if self.spotify else {}
-
         if not status or not status.get('is_playing'):
             self.stop_monitor()
             self.mouth_text = None
             self.enclosure.mouth_reset()
+            self.disable_playing_intents()
             return
 
         # Get the current track info
@@ -409,15 +434,8 @@ class SpotifySkill(CommonPlaySkill):
                         })
         match = re.match(self.translate_regex('song'), phrase)
         if match:
-            data = self.spotify.search(match.groupdict()['track'],
-                                       type='track')
-            if data:
-                return (1.0,
-                        {
-                            'data': data,
-                            'name': None,
-                            'type': 'track'
-                        })
+            song = match.groupdict()['track']
+            return self.query_song(song, bonus)
         return NOTHING_FOUND
 
     def generic_query(self, phrase, bonus):
@@ -457,7 +475,6 @@ class SpotifySkill(CommonPlaySkill):
         """
         data = None
         by_word = ' {} '.format(self.translate('by'))
-        by_word = ' {} '.format(self.translate('by'))
         if len(album.split(by_word)) > 1:
             album, artist = album.split(by_word)
             album='*{}* artist:{}'.format(album, artist)
@@ -471,6 +488,33 @@ class SpotifySkill(CommonPlaySkill):
                         'data': data,
                         'name': None,
                         'type': 'album'
+                    })
+        return NOTHING_FOUND
+
+    def query_song(self, song, bonus):
+        """ Try to find a song.
+
+            Searches Spotify for song and artist if provided.
+
+            Arguments:
+                song (str): Song to search for
+                bonus (float): Any bonus to apply to the confidence
+
+            Returns: Tuple with confidence and data or NOTHING_FOUND
+        """
+        data = None
+        by_word = ' {} '.format(self.translate('by'))
+        if len(song.split(by_word)) > 1:
+            song, artist = song.split(by_word)
+            song='*{}* artist:{}'.format(song, artist)
+
+        data = self.spotify.search(song, type='track')
+        if data:
+            return (1.0,
+                    {
+                        'data': data,
+                        'name': None,
+                        'type': 'track'
                     })
         return NOTHING_FOUND
 
@@ -501,6 +545,9 @@ class SpotifySkill(CommonPlaySkill):
             else:  # artist, album track
                 self.log.info('playing {}'.format(data['type']))
                 self.play(dev, data=data['data'], data_type=data['type'])
+            self.enable_playing_intents()
+            if data.get('type') and data['type'] != 'continue':
+                self.last_played_type = data['type']
 
         except NoSpotifyDevicesError:
             if self.librespot_failed:
@@ -517,6 +564,7 @@ class SpotifySkill(CommonPlaySkill):
             self.speak_dialog('PlaybackFailed',
                 {'reason': self.translate('PlaylistNotFound')})
         except Exception as e:
+            self.log.exception(str(e))
             self.speak_dialog('PlaybackFailed', {'reason': str(e)})
 
     def create_intents(self):
@@ -526,6 +574,24 @@ class SpotifySkill(CommonPlaySkill):
         self.register_intent(intent, self.search_spotify)
         self.register_intent_file('ShuffleOn.intent', self.shuffle_on)
         self.register_intent_file('ShuffleOff.intent', self.shuffle_off)
+        self.register_intent_file('WhatSong.intent', self.song_info)
+        self.register_intent_file('WhatAlbum.intent', self.album_info)
+        self.register_intent_file('WhatArtist.intent', self.artist_info)
+        self.register_intent_file('StopMusic.intent', self.handle_stop)
+        time.sleep(0.5)
+        self.disable_playing_intents()
+
+    def enable_playing_intents(self):
+        self.enable_intent('WhatSong.intent')
+        self.enable_intent('WhatAlbum.intent')
+        self.enable_intent('WhatArtist.intent')
+        self.enable_intent('StopMusic.intent')
+
+    def disable_playing_intents(self):
+        self.disable_intent('WhatSong.intent')
+        self.disable_intent('WhatAlbum.intent')
+        self.disable_intent('WhatArtist.intent')
+        self.disable_intent('StopMusic.intent')
 
     @property
     def playlists(self):
@@ -813,6 +879,28 @@ class SpotifySkill(CommonPlaySkill):
         else:
             self.failed_auth()
 
+    def song_info(self, message):
+        """ Speak song info. """
+        status = self.spotify.status() if self.spotify else None
+        song, artist, _ = status_info(status)
+        self.speak_dialog('CurrentSong', {'song': song, 'artist': artist})
+
+    def album_info(self, message):
+        """ Speak album info. """
+        status = self.spotify.status() if self.spotify else None
+        _, _, album = status_info(status)
+        if self.last_played_type == 'album':
+            self.speak_dialog('CurrentAlbum', {'album': album})
+        else:
+            self.speak_dialog('OnAlbum', {'album': album})
+
+    def artist_info(self, message):
+        """ Speak artist info. """
+        status = self.spotify.status() if self.spotify else None
+        if status:
+            _, artist, _ = status_info(status)
+            self.speak_dialog('CurrentArtist', {'artist': artist})
+
     def __pause(self):
         # if authorized and playback was started by the skill
         if self.spotify and self.dev_id:
@@ -882,6 +970,9 @@ class SpotifySkill(CommonPlaySkill):
             self.failed_auth()
         else:
             self.speak_dialog('NothingPlaying')
+
+    def handle_stop(self, message):
+        self.stop()
 
     def stop(self):
         """ Stop playback. """
