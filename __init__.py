@@ -120,6 +120,7 @@ class SpotifySkill(CommonPlaySkill):
         self._playlists = None
         self.regexes = {}
         self.last_played_type = None # The last uri type that was started
+        self.is_playing = False
 
     def translate_regex(self, regex):
         if regex not in self.regexes:
@@ -293,6 +294,8 @@ class SpotifySkill(CommonPlaySkill):
     def _update_display(self, message):
         # Checks once a second for feedback
         status = self.spotify.status() if self.spotify else {}
+        self.is_playing = self.spotify.is_playing()
+
         if not status or not status.get('is_playing'):
             self.stop_monitor()
             self.mouth_text = None
@@ -548,6 +551,7 @@ class SpotifySkill(CommonPlaySkill):
             self.enable_playing_intents()
             if data.get('type') and data['type'] != 'continue':
                 self.last_played_type = data['type']
+            self.is_playing = True
 
         except NoSpotifyDevicesError:
             if self.librespot_failed:
@@ -974,25 +978,29 @@ class SpotifySkill(CommonPlaySkill):
     def handle_stop(self, message):
         self.stop()
 
+    def do_stop(self):
+        try:
+            self.pause(None)
+        except Exception as e:
+            self.log.error('Pause failed: {}'.format(repr(e)))
+            dev = self.get_default_device()
+            if dev:
+                self.log.info('Retrying with {}'.format(dev['name']))
+                self.dev_id = dev['id']
+                self.pause(None)
+
+            # Clear playing device id
+        self.dev_id = None
+        return True
+
     def stop(self):
         """ Stop playback. """
-        if self.spotify and self.spotify.is_playing():
+        if self.spotify and self.is_playing:
             if self.dev_id:
-                try:
-                    self.pause(None)
-                except Exception as e:
-                    self.log.error('Pause failed: {}'.format(repr(e)))
-                    dev = self.get_default_device()
-                    if dev:
-                        self.log.info('Retrying with {}'.format(dev['name']))
-                        self.dev_id = dev['id']
-                        self.pause(None)
-
-                # Clear playing device id
-                self.dev_id = None
-                return True
-            self.dev_id = None
-        return False
+                self.schedule_event(self.do_stop, 0, name='StopSpotify')
+            return True
+        else:
+            return False
 
     def stop_librespot(self):
         """ Send Terminate signal to librespot if it's running. """
