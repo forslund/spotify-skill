@@ -28,12 +28,21 @@ If you log in to Spotify using Facebook, your password will be your _Facebook_ p
 _NOTE: You MUST have a Premium Spotify account to use this **Skill**. It will NOT work with a free Spotify account._
 
 
-## Examples 
-* "What Spotify devices are available?"
-* "Play discover weekly"
-* "Search Spotify for Hello Nasty"
-* "Play something by Coventant"
-* "Play the album Hello Nasty on Spotify"
+## Commands 
+
+### Playing music:
+
+* "Play something by Coventant" - Will queue songs by Coventant
+* "Play Background" - Will play either your playlist named "Background" or the first song result
+* "Search Spotify for Hello Nasty" - Will play first song result matching the query
+
+### Controls
+* "Play the next/previous song" - Will skip the track either forward or backwards, respectively
+* "Stop/Pause the music" - Will pause the current track
+* "Turn on/off spotify shuffle" - Will enable/disable shuffling on the current song queue
+
+### Misc
+* "What Spotify devices are available?" - Will list currently available Spotify devices
 
 ## Credits 
 @forslund
