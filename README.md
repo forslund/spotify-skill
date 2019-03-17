@@ -43,12 +43,12 @@ _NOTE: You MUST have a Premium Spotify account to use this **Skill**. It will NO
 * "Play Background" - Will play either your playlist named "Background" or the first song result
 * "Search Spotify for Hello Nasty" - Will play first song result matching the query
 
-### Controls
+### Controls:
 * "Play the next/previous song" - Will skip the track either forward or backwards, respectively
 * "Stop/Pause the music" - Will pause the current track
 * "Turn on/off spotify shuffle" - Will enable/disable shuffling on the current song queue
 
-### Misc
+### Misc:
 * "What Spotify devices are available?" - Will list currently available Spotify devices
 
 ## Credits 
