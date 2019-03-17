@@ -729,10 +729,7 @@ class SpotifySkill(CommonPlaySkill):
             self.speak_dialog('ListeningToPlaylist',
                               data={'playlist': name})
             time.sleep(2)
-            tracks = self.spotify.user_playlist_tracks(uri['owner']['id'],
-                                                       uri['id'])
-            uris = [t['track']['uri'] for t in tracks['items']]
-            self.spotify_play(dev['id'], uris=uris)
+            self.spotify_play(dev['id'], context_uri=uri['uri'])
         else:
             self.log.info('No playlist found')
             raise PlaylistNotFoundError
