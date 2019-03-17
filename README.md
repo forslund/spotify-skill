@@ -28,7 +28,14 @@ If you log in to Spotify using Facebook, your password will be your _Facebook_ p
 _NOTE: You MUST have a Premium Spotify account to use this **Skill**. It will NOT work with a free Spotify account._
 
 
-## Commands 
+## Examples 
+* "What Spotify devices are available?"
+* "Play discover weekly"
+* "Search Spotify for Hello Nasty"
+* "Play something by Coventant"
+* "Play the album Hello Nasty on Spotify"
+
+## Commands
 
 ### Playing music:
 
