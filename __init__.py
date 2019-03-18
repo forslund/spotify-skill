@@ -401,18 +401,8 @@ class SpotifySkill(CommonPlaySkill):
         # Check if playlist
         match = re.match(self.translate_regex('playlist'), phrase)
         if match:
-            bonus += 0.1
-            playlist, conf = self.get_best_playlist(match.groupdict()['playlist'])
-            confidence = min(conf + bonus, 1.0)
-            if not playlist:
-                return NOTHING_FOUND
-            uri = self.playlists[playlist]
-            return (conf,
-                    {
-                        'data': uri,
-                        'name': playlist,
-                        'type': 'playlist'
-                    })
+            return self.query_playlist(match.groupdict()['playlist'])
+
         # Check album
         match = re.match(self.translate_regex('album'), phrase)
         if match:
@@ -493,6 +483,42 @@ class SpotifySkill(CommonPlaySkill):
                         'type': 'album'
                     })
         return NOTHING_FOUND
+
+    def query_playlist(self, playlist):
+        """ Try to find a playlist.
+
+            First searches the users playlists, then tries to find a public
+            one.
+
+            Arguments:
+                playlist (str): Playlist to search for
+
+            Returns: Tuple with confidence and data or NOTHING_FOUND
+        """
+        result, conf = self.get_best_playlist(playlist)
+        if playlist and conf > 0.5:
+            uri = self.playlists[result]
+            return (conf,
+                    {
+                        'data': uri,
+                        'name': playlist,
+                        'type': 'playlist'
+                    })
+        else:
+            data = self.spotify.search(playlist, type='playlist')
+            if data and data['playlists']['items']:
+                best = data['playlists']['items'][0]
+                confidence = fuzzy_match(best['name'].lower(), playlist)
+                print(best)
+                return (confidence,
+                    {
+                        'data': best,
+                        'name': best['name'],
+                        'type': 'playlist'
+                    })
+
+        return NOTHING_FOUND
+
 
     def query_song(self, song, bonus):
         """ Try to find a song.
@@ -724,6 +750,7 @@ class SpotifySkill(CommonPlaySkill):
             raise
 
     def start_playlist_playback(self, dev, name, uri):
+        name = name.replace('|', ':')
         if uri:
             self.log.info(u'playing {} using {}'.format(name, dev['name']))
             self.speak_dialog('ListeningToPlaylist',
