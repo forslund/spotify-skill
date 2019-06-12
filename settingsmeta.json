@@ -26,7 +26,7 @@
           {
             "type": "label",
             "value": "",
-            "label": "Click the Save button at the top of your screen, then use the Connect button to authorize with Spotify<p/>"
+            "label": "Click the Save button, then use the Connect button to authorize with Spotify.<p/>"
           },
           {
             "name": "Spotify",
