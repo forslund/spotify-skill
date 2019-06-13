@@ -452,8 +452,23 @@ class SpotifySkill(CommonPlaySkill):
                         'name': playlist,
                         'type': 'playlist'
                     })
+        # Check album
+        album = self.query_album(phrase, bonus)
+        if album[0] and album[0] > 0.3:
+            return album
+        # Check tracks
+        song = self.query_song(phrase, bonus)
+        
+        # Low percent match ignore query
+        if ((not song[0] or song[0] < 0.3) and
+                (not album[0] or album[0] < 0.3)):
+            return NOTHING_FOUND
+        # If better song match than album match return it
+        elif not album[0] or song[0] > album[0]:
+            return song
+        # otherwise return the album match
         else:
-            return self.query_album(phrase, bonus)
+            return album
 
     def query_album(self, album, bonus):
         """ Try to find an album.
@@ -569,6 +584,7 @@ class SpotifySkill(CommonPlaySkill):
             if data['type'] == 'continue':
                 self.continue_current_playlist(dev)
             elif data['type'] == 'playlist':
+                print("PLAYLIST")
                 self.start_playlist_playback(dev, data['name'],
                                              data['data'])
             else:  # artist, album track
