@@ -1,1 +1,1 @@
-(the artist|the group|the band|something by) (?P<artist>.+)
+(the artist|the group|the band|(something|anything|stuff|music|songs) (by|from)) (?P<artist>.+)
