@@ -195,6 +195,10 @@ class SpotifyConnect(spotipy.Spotify):
         except Exception as e:
             LOG.error(e)
 
+    def shutdown(self):
+        """ Shutdown instance. """
+        pass
+
 
 def get_album_info(data):
     """ Get album info from data object.
@@ -228,4 +232,101 @@ def get_song_info(data):
             data['tracks']['items'][0]['uri'])
 
 
+session = None
 
+
+class LibSpotify(SpotifyConnect):
+    def __init__(self, user, password, client_credentials_manager=None):
+        super().__init__(
+            client_credentials_manager=client_credentials_manager)
+        global spotify
+        global session
+
+        print('!!!!!!!!!!!!')
+        print(session)
+        import spotify
+        from threading import Event
+
+        if not session:
+            config = spotify.Config()
+            config.load_application_key_file('/home/ake/appkey.key')
+            config.tracefile = b'/tmp/spotify.log'
+            session = spotify.Session(config)
+
+        self.session = session
+        # Process events in the background
+        self.loop = spotify.EventLoop(session)
+        self.loop.start()
+
+        # Connect an audio sink
+        self.audio = spotify.AlsaSink(self.session)
+
+        self.session.on(spotify.SessionEvent.END_OF_TRACK,
+                        self.on_track_end)
+        self.session.on(spotify.SessionEvent.CONNECTION_STATE_UPDATED,
+                        self.on_connection_state_updated)
+        self.logged_in = Event()
+        self.session.login(user, password)
+        self.logged_in.wait()
+
+    def on_connection_state_updated(self, session):
+        print('CONNECTION STATE UPDATED!')
+        print(session.connection.state)
+        if session.connection.state is spotify.ConnectionState.LOGGED_IN:
+            self.logged_in.set()
+            print("LOGGED IN")
+
+    def _play_current_track(self):
+        track = track = self.session.get_track(self.track_list[self.track]) \
+                                               .load()
+        self.session.player.load(track)
+        self.session.player.play()
+
+    def on_track_end(self, session):
+        print("TRACK END, Jumping to next!")
+        self.track += 1
+        if self.track < len(self.track_list):
+            self._play_current_track()
+        else:
+            self.track = 0
+
+    def play(self, _, uri=None, context_uri=None):
+        print(uri, context_uri)
+        if isinstance(uri, str):
+            self.track_list = [uri]
+        elif isinstance(uri, list):
+            self.track_list = uri
+        elif context_uri and context_uri.startswith('spotify:album:'):
+            # Extract uri's from album tracklist
+            tracks = self.album_tracks(context_uri)
+            self.track_list = [t['uri'] for t in tracks['items']]
+        elif context_uri and context_uri.startswith('spotify:artist:'):
+            tracks = self.artist_top_tracks(context_uri)
+            print(tracks.keys())
+            self.track_list = [t['uri'] for t in tracks['tracks']]
+        else:
+            raise ValueError('Invalid uri/context_uri')
+
+        self.track = 0
+        self._play_current_track()
+
+    def pause(self, _=None):
+        self.session.player.pause()
+
+    def resume(self, _=None):
+        self.session.player.play()
+
+    def next(self):
+        self.on_track_end(None)
+
+    def shutdown(self):
+        self.loop.stop()
+
+
+if __name__ == '__main__':
+    creds = MycroftSpotifyCredentials(1)
+    s = LibSpotify(user='cazed', password='b0mberman',
+                   client_credentials_manager=creds)
+
+    artist_uri = 'spotify:artist:4rwTNBFIOwNFbHIraFCNl6'
+    s.play('', context_uri=artist_uri)

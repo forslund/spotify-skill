@@ -35,7 +35,7 @@ import signal
 from socket import gethostname
 
 import spotipy
-from .spotify import (MycroftSpotifyCredentials, SpotifyConnect,
+from .spotify import (MycroftSpotifyCredentials, SpotifyConnect, LibSpotify,
                       get_album_info, get_artist_info, get_song_info)
 import random
 
@@ -193,7 +193,9 @@ class SpotifySkill(CommonPlaySkill):
         # will limit the accesses to the api.
         if not self.spotify and self.settings.get('user', None):
             try:
+                self.log.info("LOADING CREDENTIALS")
                 self.load_credentials()
+                self.log.info(self.spotify)
             except Exception as e:
                 self.log.debug('Credentials could not be fetched. '
                               '({})'.format(repr(e)))
@@ -209,10 +211,17 @@ class SpotifySkill(CommonPlaySkill):
         """ Retrieve credentials from the backend and connect to Spotify """
         try:
             creds = MycroftSpotifyCredentials(self.OAUTH_ID)
-            self.spotify = SpotifyConnect(client_credentials_manager=creds)
+            if self.settings['default_device']:
+                self.spotify = SpotifyConnect(client_credentials_manager=creds)
+            else:
+                self.spotify = LibSpotify(user=self.settings['user'],
+                                          password=self.settings['password'],
+                                          client_credentials_manager=creds)
         except HTTPError:
             self.log.info('Couldn\'t fetch credentials')
             self.spotify = None
+        except Exception as e:
+            self.log.exception(repr(e))
 
         if self.spotify:
             # Spotfy connection worked, prepare for usage
@@ -458,7 +467,7 @@ class SpotifySkill(CommonPlaySkill):
             return album
         # Check tracks
         song = self.query_song(phrase, bonus)
-        
+
         # Low percent match ignore query
         if ((not song[0] or song[0] < 0.3) and
                 (not album[0] or album[0] < 0.3)):
@@ -564,11 +573,13 @@ class SpotifySkill(CommonPlaySkill):
 
     def CPS_start(self, phrase, data):
         """ Handler for common play framework start playback request. """
+        self.log.info(data)
         try:
             if not self.spotify:
                 raise SpotifyNotAuthorizedError
             # Wait for librespot to start
-            if self.librespot_starting:
+            if (self.librespot_starting and not
+                    isinstance(self.spotify, LibSpotify)):
                 self.log.info('Restarting Librespot...')
                 for i in range(10):
                     time.sleep(0.5)
@@ -683,7 +694,9 @@ class SpotifySkill(CommonPlaySkill):
 
     def get_default_device(self):
         """ Get preferred playback device """
-        if self.spotify:
+        if isinstance(self.spotify, LibSpotify):
+            return {'id': 'libspotify'}
+        elif isinstance(self.spotify, SpotifyConnect):
             # When there is an active Spotify device somewhere, use it
             if (self.devices and len(self.devices) > 0 and
                     self.spotify.is_playing()):
@@ -740,6 +753,10 @@ class SpotifySkill(CommonPlaySkill):
         """ Check that playback is possible, launch client if neccessary. """
         if self.spotify is None:
             return False
+
+        # If we're not using the local librespot
+        if isinstance(self.spotify, LibSpotify):
+            return True
 
         devs = [d['name'] for d in self.devices]
         if self.process and self.device_name not in devs:
@@ -878,7 +895,7 @@ class SpotifySkill(CommonPlaySkill):
 
         try:
             dev = self.get_default_device()
-            if not dev:
+            if not dev and not isinstance(self.spotify, LibSpotify):
                 raise NoSpotifyDevicesError
 
             utterance = message.data['utterance']
@@ -1054,6 +1071,7 @@ class SpotifySkill(CommonPlaySkill):
         """ Remove the monitor at shutdown. """
         self.cancel_scheduled_event('SpotifyLogin')
         self.stop_monitor()
+        self.spotify.shutdown()
         self.stop_librespot()
 
         # Do normal shutdown procedure
