@@ -302,22 +302,24 @@ class LibSpotify(SpotifyConnect):
             self.track_list = [t['uri'] for t in tracks['items']]
         elif context_uri and context_uri.startswith('spotify:artist:'):
             tracks = self.artist_top_tracks(context_uri)
-            print(tracks.keys())
             self.track_list = [t['uri'] for t in tracks['tracks']]
-        else:
-            raise ValueError('Invalid uri/context_uri')
 
-        self.track = 0
-        self._play_current_track()
+        if uri or context_uri:
+            self.track = 0
+            self._play_current_track()
+        else:
+            self.session.player.play()
 
     def pause(self, _=None):
         self.session.player.pause()
 
-    def resume(self, _=None):
-        self.session.player.play()
-
-    def next(self):
+    def next(self, _=None):
         self.on_track_end(None)
+
+    def previous(self, _=None):
+        if self.track > 0:
+            self.track -= 1
+        self._play_current_track()
 
     def shutdown(self):
         self.loop.stop()
