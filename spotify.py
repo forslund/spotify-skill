@@ -267,7 +267,6 @@ class LibSpotify(SpotifyConnect):
                         self.on_connection_state_updated)
         self.logged_in = Event()
         self.session.login(user, password)
-        self.logged_in.wait()
 
     def on_connection_state_updated(self, session):
         print('CONNECTION STATE UPDATED!')
@@ -277,8 +276,7 @@ class LibSpotify(SpotifyConnect):
             print("LOGGED IN")
 
     def _play_current_track(self):
-        track = track = self.session.get_track(self.track_list[self.track]) \
-                                               .load()
+        track = self.session.get_track(self.track_list[self.track]).load()
         self.session.player.load(track)
         self.session.player.play()
 
@@ -322,7 +320,16 @@ class LibSpotify(SpotifyConnect):
         self._play_current_track()
 
     def shutdown(self):
+        # Logout user
+        self.session.logout()
+        # Unregister event handlers and stop event loop
+        self.session.off(spotify.SessionEvent.END_OF_TRACK,
+                         self.on_track_end)
+        self.session.off(spotify.SessionEvent.CONNECTION_STATE_UPDATED,
+                         self.on_connection_state_updated)
         self.loop.stop()
+        # Turn off audio
+        self.audio.off()
 
 
 if __name__ == '__main__':

@@ -1069,9 +1069,12 @@ class SpotifySkill(CommonPlaySkill):
 
     def shutdown(self):
         """ Remove the monitor at shutdown. """
+        try:
+            self.spotify.shutdown()
+        except Exception as e:
+            self.log.exception(repr(e))
         self.cancel_scheduled_event('SpotifyLogin')
         self.stop_monitor()
-        self.spotify.shutdown()
         self.stop_librespot()
 
         # Do normal shutdown procedure
