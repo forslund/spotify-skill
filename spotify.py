@@ -268,8 +268,15 @@ class LibSpotify(SpotifyConnect):
                         self.on_track_end)
         self.session.on(spotify.SessionEvent.CONNECTION_STATE_UPDATED,
                         self.on_connection_state_updated)
+
         self.logged_in = Event()
-        self.session.login(user, password)
+        self.user = user
+        self.password = password
+        self.login()
+
+    def login(self):
+        self.session.login(self.user, self.password)
+        self.logged_in.wait()
 
     def on_connection_state_updated(self, session):
         print('CONNECTION STATE UPDATED!')
@@ -305,14 +312,18 @@ class LibSpotify(SpotifyConnect):
             tracks = self.artist_top_tracks(context_uri)
             self.track_list = [t['uri'] for t in tracks['tracks']]
 
+        if self.session.connection.state != spotify.ConnectionState.LOGGED_IN:
+            self.login()
         if uri or context_uri:
             self.track = 0
             self._play_current_track()
         else:
             self.session.player.play()
+        self._is_playing = True
 
     def pause(self, _=None):
         self.session.player.pause()
+        self._is_playing = False
 
     def next(self, _=None):
         self.on_track_end(None)
@@ -334,6 +345,8 @@ class LibSpotify(SpotifyConnect):
         # Turn off audio
         self.audio.off()
 
+    def is_playing(self, device=None):
+        return self._is_playing or super().is_playing(device)
 
 if __name__ == '__main__':
     creds = MycroftSpotifyCredentials(1)
