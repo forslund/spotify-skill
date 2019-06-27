@@ -1,3 +1,5 @@
+from os.path import dirname, join
+
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from requests import HTTPError
@@ -248,8 +250,9 @@ class LibSpotify(SpotifyConnect):
         from threading import Event
 
         if not session:
+            appkey_file = join(dirname(__file__), 'appkey.key')
             config = spotify.Config()
-            config.load_application_key_file('/home/ake/appkey.key')
+            config.load_application_key_file(appkey_file)
             config.tracefile = b'/tmp/spotify.log'
             session = spotify.Session(config)
 
