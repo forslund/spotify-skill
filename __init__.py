@@ -138,7 +138,7 @@ class SpotifySkill(CommonPlaySkill):
         self.librespot_starting = True
         platform = self.config_core.get('enclosure').get('platform', 'unknown')
         path = self.settings.get('librespot_path', None)
-        if platform == 'mycroft_mark_1' and not path:
+        if platform in MANAGED_PLATFORMS and not path:
             path = 'librespot'
 
         if (path and self.device_name and
