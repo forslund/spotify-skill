@@ -245,10 +245,9 @@ class LibSpotify(SpotifyConnect):
         global session
 
         print('!!!!!!!!!!!!')
-        print(session)
         import spotify
         from threading import Event
-
+        from .scaled_alsa_sink import ScaledAlsaSink
         if not session:
             appkey_file = join(dirname(__file__), 'appkey.key')
             config = spotify.Config()
@@ -262,7 +261,7 @@ class LibSpotify(SpotifyConnect):
         self.loop.start()
 
         # Connect an audio sink
-        self.audio = spotify.AlsaSink(self.session)
+        self.audio = ScaledAlsaSink(self.session)
 
         self.session.on(spotify.SessionEvent.END_OF_TRACK,
                         self.on_track_end)
