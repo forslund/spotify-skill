@@ -116,7 +116,9 @@ class SpotifySkill(CommonPlaySkill):
         self.__device_list = None
         self.__devices_fetched = 0
         self.OAUTH_ID = 1
-        self.DEFAULT_VOLUME = 80
+        enclosure_config = self.config_core.get('enclosure')
+        self.platform = enclosure_config.get('platform', 'unknown')
+        self.DEFAULT_VOLUME = 80 if self.platform == 'mycroft_mark_1' else 100 
         self._playlists = None
         self.regexes = {}
         self.last_played_type = None # The last uri type that was started
@@ -136,9 +138,8 @@ class SpotifySkill(CommonPlaySkill):
         TODO: Discovery mode
         """
         self.librespot_starting = True
-        platform = self.config_core.get('enclosure').get('platform', 'unknown')
         path = self.settings.get('librespot_path', None)
-        if platform in MANAGED_PLATFORMS and not path:
+        if self.platform in MANAGED_PLATFORMS and not path:
             path = 'librespot'
 
         if (path and self.device_name and
@@ -183,8 +184,7 @@ class SpotifySkill(CommonPlaySkill):
         self.schedule_repeating_event(self.on_websettings_changed,
                                       None, 5*60,
                                       name='SpotifyLogin')
-        platform = self.config_core.get('enclosure').get('platform', 'unknown')
-        if platform in MANAGED_PLATFORMS:
+        if self.platform in MANAGED_PLATFORMS:
             update_librespot()
         self.on_websettings_changed()
 
