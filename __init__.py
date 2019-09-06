@@ -22,7 +22,7 @@ hardware.  (Which, depending on the audio setup, might not be the main
 speaker on the equipment.)
 """
 import re
-from mycroft.skills.core import intent_handler, intent_file_handler
+from mycroft.skills.core import intent_handler
 from mycroft.util.parse import match_one, fuzzy_match
 from mycroft.api import DeviceApi
 from requests import HTTPError
@@ -83,15 +83,15 @@ def status_info(status):
      """
     try:
         artist = status['item']['artists'][0]['name']
-    except:
+    except Exception:
         artist = 'unknown'
     try:
         track = status['item']['name']
-    except:
+    except Exception:
         track = 'unknown'
     try:
         album = status['item']['album']['name']
-    except:
+    except Exception:
         album = 'unknown'
     return track, artist, album
 
@@ -118,10 +118,10 @@ class SpotifySkill(CommonPlaySkill):
         self.OAUTH_ID = 1
         enclosure_config = self.config_core.get('enclosure')
         self.platform = enclosure_config.get('platform', 'unknown')
-        self.DEFAULT_VOLUME = 80 if self.platform == 'mycroft_mark_1' else 100 
+        self.DEFAULT_VOLUME = 80 if self.platform == 'mycroft_mark_1' else 100
         self._playlists = None
         self.regexes = {}
-        self.last_played_type = None # The last uri type that was started
+        self.last_played_type = None  # The last uri type that was started
         self.is_playing = False
 
     def translate_regex(self, regex):
@@ -152,7 +152,7 @@ class SpotifySkill(CommonPlaySkill):
             self.process = Popen([path, '-n', self.device_name,
                                   '-u', self.settings['user'],
                                   '-p', self.settings['password']],
-                                  stdout=outs, stderr=outs)
+                                 stdout=outs, stderr=outs)
 
             time.sleep(3)  # give libreSpot time to start-up
             if self.process and self.process.poll() is not None:
@@ -196,7 +196,7 @@ class SpotifySkill(CommonPlaySkill):
                 self.load_credentials()
             except Exception as e:
                 self.log.debug('Credentials could not be fetched. '
-                              '({})'.format(repr(e)))
+                               '({})'.format(repr(e)))
 
         if self.spotify:
             self.cancel_scheduled_event('SpotifyLogin')
@@ -306,11 +306,11 @@ class SpotifySkill(CommonPlaySkill):
         # Get the current track info
         try:
             text = status['item']['artists'][0]['name'] + ': '
-        except:
+        except Exception:
             text = ""
         try:
             text += status['item']['name']
-        except:
+        except Exception:
             pass
 
         # Update the "Now Playing" display if needed
@@ -368,7 +368,8 @@ class SpotifySkill(CommonPlaySkill):
                     level = CPSMatchLevel.GENERIC
                     phrase += ' on spotify'
             else:
-                self.log.warning('Unexpected spotify type: {}'.format(data.get('type')))
+                self.log.warning('Unexpected spotify type: '
+                                 '{}'.format(data.get('type')))
                 level = CPSMatchLevel.GENERIC
 
             return phrase, level, data
@@ -418,7 +419,8 @@ class SpotifySkill(CommonPlaySkill):
             data = self.spotify.search(artist, type='artist')
             if data and data['artists']['items']:
                 best = data['artists']['items'][0]['name']
-                confidence = min(fuzzy_match(best, artist.lower()) + bonus, 1.0)
+                confidence = fuzzy_match(best, artist.lower()) + bonus
+                confidence = min(confidence, 1.0)
                 return (confidence,
                         {
                             'data': data,
@@ -470,7 +472,7 @@ class SpotifySkill(CommonPlaySkill):
         by_word = ' {} '.format(self.translate('by'))
         if len(album.split(by_word)) > 1:
             album, artist = album.split(by_word)
-            album='*{}* artist:{}'.format(album, artist)
+            album = '*{}* artist:{}'.format(album, artist)
             bonus += 0.1
         data = self.spotify.search(album, type='album')
         if data and data['albums']['items']:
@@ -498,27 +500,19 @@ class SpotifySkill(CommonPlaySkill):
         result, conf = self.get_best_playlist(playlist)
         if playlist and conf > 0.5:
             uri = self.playlists[result]
-            return (conf,
-                    {
-                        'data': uri,
-                        'name': playlist,
-                        'type': 'playlist'
-                    })
+            return (conf, {'data': uri,
+                           'name': playlist,
+                           'type': 'playlist'})
         else:
             data = self.spotify.search(playlist, type='playlist')
             if data and data['playlists']['items']:
                 best = data['playlists']['items'][0]
                 confidence = fuzzy_match(best['name'].lower(), playlist)
-                print(best)
-                return (confidence,
-                    {
-                        'data': best,
-                        'name': best['name'],
-                        'type': 'playlist'
-                    })
+                return (confidence, {'data': best,
+                                     'name': best['name'],
+                                     'type': 'playlist'})
 
         return NOTHING_FOUND
-
 
     def query_song(self, song, bonus):
         """ Try to find a song.
@@ -535,16 +529,11 @@ class SpotifySkill(CommonPlaySkill):
         by_word = ' {} '.format(self.translate('by'))
         if len(song.split(by_word)) > 1:
             song, artist = song.split(by_word)
-            song='*{}* artist:{}'.format(song, artist)
+            song = '*{}* artist:{}'.format(song, artist)
 
         data = self.spotify.search(song, type='track')
-        if data:
-            return (1.0,
-                    {
-                        'data': data,
-                        'name': None,
-                        'type': 'track'
-                    })
+        if data and len(data['tracks']['items']) > 0:
+            return (1.0, {'data': data, 'name': None, 'type': 'track'})
         return NOTHING_FOUND
 
     def CPS_start(self, phrase, data):
@@ -586,13 +575,14 @@ class SpotifySkill(CommonPlaySkill):
             else:
                 self.log.error("Unable to get a default device while trying "
                                "to play something.")
-                self.speak_dialog('PlaybackFailed',
+                self.speak_dialog(
+                    'PlaybackFailed',
                     {'reason': self.translate('NoDevicesAvailable')})
         except SpotifyNotAuthorizedError:
             self.failed_auth()
         except PlaylistNotFoundError:
             self.speak_dialog('PlaybackFailed',
-                {'reason': self.translate('PlaylistNotFound')})
+                              {'reason': self.translate('PlaylistNotFound')})
         except Exception as e:
             self.log.exception(str(e))
             self.speak_dialog('PlaybackFailed', {'reason': str(e)})
@@ -744,7 +734,7 @@ class SpotifySkill(CommonPlaySkill):
             self.dev_id = dev_id
         except spotipy.SpotifyException as e:
             # TODO: Catch other conditions?
-            raise SpotifyNotAuthorizedError
+            raise SpotifyNotAuthorizedError from e
         except Exception as e:
             self.log.exception(e)
             raise
@@ -882,13 +872,16 @@ class SpotifySkill(CommonPlaySkill):
         except NoSpotifyDevicesError:
             self.log.error("Unable to get a default device while trying "
                            "to play something.")
-            self.speak_dialog('PlaybackFailed',
+            self.speak_dialog(
+                'PlaybackFailed',
                 {'reason': self.translate('NoDevicesAvailable')})
         except SpotifyNotAuthorizedError:
-            self.speak_dialog('PlaybackFailed',
+            self.speak_dialog(
+                'PlaybackFailed',
                 {'reason': self.translate('NotAuthorized')})
         except PlaylistNotFoundError:
-            self.speak_dialog('PlaybackFailed',
+            self.speak_dialog(
+                'PlaybackFailed',
                 {'reason': self.translate('PlaylistNotFound')})
         except Exception as e:
             self.speak_dialog('PlaybackFailed', {'reason': str(e)})
