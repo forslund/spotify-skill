@@ -34,13 +34,27 @@ class MycroftSpotifyCredentials(SpotifyClientCredentials):
         self.expiration_time = None
         self.get_access_token()
 
-    def get_access_token(self):
-        if not self.access_token or time.time() > self.expiration_time:
+    def get_access_token(self, force=False):
+        if (not self.access_token or time.time() > self.expiration_time or
+                force):
             d = get_token(self.dev_cred)
             self.access_token = d['access_token']
             # get expiration time from message, if missing assume 1 hour
             self.expiration_time = d.get('expiration') or time.time() + 3600
         return self.access_token
+
+
+def refresh_auth(func):
+    def wrapper(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except HTTPError as e:
+            if e.response.status_code == 401:
+                self.client_credentials_manager.get_access_token(force=True)
+                return func(self, *args, **kwargs)
+            else:
+                raise
+    return wrapper
 
 
 class SpotifyConnect(spotipy.Spotify):
@@ -50,6 +64,8 @@ class SpotifyConnect(spotipy.Spotify):
     This class extends the spotipy.Spotify class with Spotify Connect
     methods since the Spotipy module including these isn't released yet.
     """
+
+    @refresh_auth
     def get_devices(self):
         """ Get a list of Spotify devices from the API.
 
@@ -63,6 +79,7 @@ class SpotifyConnect(spotipy.Spotify):
         except Exception as e:
             LOG.error(e)
 
+    @refresh_auth
     def status(self):
         """ Get current playback status (across the Spotify system) """
         try:
@@ -71,6 +88,7 @@ class SpotifyConnect(spotipy.Spotify):
             LOG.error(e)
             return None
 
+    @refresh_auth
     def is_playing(self, device=None):
         """ Get playback state, either across Spotify or for given device.
         Args:
@@ -92,6 +110,7 @@ class SpotifyConnect(spotipy.Spotify):
             # Technically a 204 return from status() request means 'no track'
             return False  # assume not playing
 
+    @refresh_auth
     def transfer_playback(self, device_id, force_play=True):
         """ Transfer playback to another device.
         Arguments:
@@ -108,6 +127,7 @@ class SpotifyConnect(spotipy.Spotify):
         except Exception as e:
             LOG.error(e)
 
+    @refresh_auth
     def play(self, device, uris=None, context_uri=None):
         """ Start playback of tracks, albums or artist.
 
@@ -133,6 +153,7 @@ class SpotifyConnect(spotipy.Spotify):
             LOG.error(e)
             raise
 
+    @refresh_auth
     def pause(self, device):
         """ Pause user's playback on device.
 
@@ -145,6 +166,7 @@ class SpotifyConnect(spotipy.Spotify):
         except Exception as e:
             LOG.error(e)
 
+    @refresh_auth
     def next(self, device):
         """ Skip track.
 
@@ -157,6 +179,7 @@ class SpotifyConnect(spotipy.Spotify):
         except Exception as e:
             LOG.error(e)
 
+    @refresh_auth
     def prev(self, device):
         """ Move back in playlist.
 
@@ -169,6 +192,7 @@ class SpotifyConnect(spotipy.Spotify):
         except Exception as e:
             LOG.error(e)
 
+    @refresh_auth
     def volume(self, device, volume):
         """ Set volume of device:
 
@@ -183,6 +207,7 @@ class SpotifyConnect(spotipy.Spotify):
         except Exception as e:
             LOG.error(e)
 
+    @refresh_auth
     def shuffle(self, state):
         """ Toggle shuffling
 
