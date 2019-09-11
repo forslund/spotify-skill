@@ -734,7 +734,11 @@ class SpotifySkill(CommonPlaySkill):
             self.dev_id = dev_id
         except spotipy.SpotifyException as e:
             # TODO: Catch other conditions?
-            raise SpotifyNotAuthorizedError from e
+            if e.http_status == 403:
+                self.log.error('Play command returned 403, play is likely '
+                               'already in progress. \n {}'.format(repr(e)))
+            else:
+                raise SpotifyNotAuthorizedError from e
         except Exception as e:
             self.log.exception(e)
             raise
