@@ -41,6 +41,16 @@ import random
 
 from mycroft.skills.common_play_skill import CommonPlaySkill, CPSMatchLevel
 
+from enum import Enum
+
+
+class DeviceType(Enum):
+    MYCROFT = 1
+    DEFAULT = 2
+    DESKTOP = 3
+    FIRSTBEST = 4
+    NOTFOUND = 5
+
 
 class SpotifyPlaybackError(Exception):
     pass
@@ -663,28 +673,38 @@ class SpotifySkill(CommonPlaySkill):
                     self.spotify.is_playing()):
                 for dev in self.devices:
                     if dev['is_active']:
+                        self.log.info('Playing on an active device '
+                                      '[{}]'.format(dev['name']))
                         return dev  # Use this device
 
             # No playing device found, use the default Spotify device
             default_device = self.settings.get('default_device', '')
             dev = None
+            device_type = DeviceType.NOTFOUND
             if default_device:
                 dev = self.device_by_name(default_device)
                 self.is_player_remote = True
+                device_type = DeviceType.DEFAULT
             # if not set or missing try playing on this device
             if not dev:
                 dev = self.device_by_name(self.device_name)
                 self.is_player_remote = False
+                device_type = DeviceType.MYCROFT
             # if not check if a desktop spotify client is playing
             if not dev:
                 dev = self.device_by_name(gethostname())
                 self.is_player_remote = False
+                device_type = DeviceType.DESKTOP
+
             # use first best device if none of the prioritized works
             if not dev and len(self.devices) > 0:
                 dev = self.devices[0]
                 self.is_player_remote = True  # ?? Guessing it is remote
+                device_type = DeviceType.FIRSTBEST
+
             if dev and not dev['is_active']:
                 self.spotify.transfer_playback(dev['id'], False)
+            self.log.info('Device detected: {}'.format(device_type))
             return dev
 
         return None
