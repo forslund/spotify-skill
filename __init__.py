@@ -458,8 +458,11 @@ class SpotifySkill(CommonPlaySkill):
 
             Returns: Tuple with confidence and data or NOTHING_FOUND
         """
-        playlist, conf = self.get_best_playlist(phrase)
-        if conf > 0.5:
+        self.log.info('Handling "{}" as a genric query...'.format(phrase))
+
+        self.log.info('Checking users playlists')
+        playlist, conf = self.get_best_user_playlist(phrase)
+        if conf and conf > 0.5:
             uri = self.playlists[playlist]
             return (conf,
                     {
@@ -467,8 +470,23 @@ class SpotifySkill(CommonPlaySkill):
                         'name': playlist,
                         'type': 'playlist'
                     })
-        else:
-            return self.query_album(phrase, bonus)
+
+        # Check for artist
+        conf, data = self.query_artist(phrase, bonus)
+        if conf and conf > 0.5:
+            return conf, data
+
+        # Check for album
+        conf, data = self.query_album(phrase, bonus)
+        if conf and conf > 0.5:
+            return conf, data
+
+        # Check for track
+        conf, data = self.query_track(phrase, bonus)
+        if conf and conf > 0.5:
+            return conf, data
+
+        return NOTHING_FOUND
 
     def query_album(self, album, bonus):
         """ Try to find an album.
@@ -510,20 +528,14 @@ class SpotifySkill(CommonPlaySkill):
 
             Returns: Tuple with confidence and data or NOTHING_FOUND
         """
-        result, conf = self.get_best_playlist(playlist)
+        result, conf = self.get_best_user_playlist(playlist)
         if playlist and conf > 0.5:
             uri = self.playlists[result]
             return (conf, {'data': uri,
                            'name': playlist,
                            'type': 'playlist'})
         else:
-            data = self.spotify.search(playlist, type='playlist')
-            if data and data['playlists']['items']:
-                best = data['playlists']['items'][0]
-                confidence = fuzzy_match(best['name'].lower(), playlist)
-                return (confidence, {'data': best,
-                                     'name': best['name'],
-                                     'type': 'playlist'})
+            return self.get_best_public_playlist(playlist)
 
         return NOTHING_FOUND
 
@@ -712,7 +724,7 @@ class SpotifySkill(CommonPlaySkill):
 
         return None
 
-    def get_best_playlist(self, playlist):
+    def get_best_user_playlist(self, playlist):
         """ Get best playlist matching the provided name
 
         Arguments:
@@ -726,7 +738,18 @@ class SpotifySkill(CommonPlaySkill):
             key, confidence = match_one(playlist.lower(), playlists)
             if confidence > 0.7:
                 return key, confidence
-        return None, 0
+        return NOTHING_FOUND
+
+    def get_best_public_playlist(self, playlist):
+        data = self.spotify.search(playlist, type='playlist')
+        if data and data['playlists']['items']:
+            best = data['playlists']['items'][0]
+            confidence = fuzzy_match(best['name'].lower(), playlist)
+            if confidence > 0.7:
+                return (confidence, {'data': best,
+                                     'name': best['name'],
+                                     'type': 'playlist'})
+        return NOTHING_FOUND
 
     def continue_current_playlist(self, dev):
         """ Send the play command to the selected device. """
