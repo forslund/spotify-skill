@@ -166,6 +166,7 @@ class SpotifySkill(CommonPlaySkill):
 
             time.sleep(3)  # give libreSpot time to start-up
             if self.process and self.process.poll() is not None:
+                self.log.error('librespot failed to start.')
                 # libreSpot shut down immediately.  Bad user/password?
                 if self.settings['user']:
                     self.librespot_failed = True
@@ -236,10 +237,12 @@ class SpotifySkill(CommonPlaySkill):
 
     def failed_auth(self):
         if not self.settings["user"]:
+            self.log.error('User info has not been set.')
             # Assume this is initial setup
             self.speak_dialog('NotConfigured')
         else:
             # Assume password changed or there is a typo
+            self.log.error('User info has been set but Auth failed.')
             self.speak_dialog('NotAuthorized')
 
     ######################################################################
