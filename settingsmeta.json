@@ -1,27 +1,27 @@
 {
-  "skillMetadata": {
-    "sections": [
-      {
-        "name": "Spotify Account",
-        "fields": [
-          {
-            "type": "label",
-            "value": "",
-            "label": "You must have a Spotify Premium account to access music.  Provide your Spotify username/password and then Connect with the button below.<p/>"
-          },
-          {
-            "name": "user",
-            "type": "text",
-            "label": "Username",
-            "value": "",
-            "placeholder": "Spotify username"
-          },
-          {
-            "name": "password",
-            "type": "password",
-            "label": "Password",
-            "value": ""
-          },
+    "skillMetadata": {
+        "sections": [
+            {
+                "name": "Spotify Account",
+                "fields": [
+                    {
+                        "type": "label",
+                        "value": "",
+                        "label": "You must have a Spotify Premium account to access music.  Provide your Spotify username/password and then Connect with the button below.<p/>"
+                    },
+                    {
+                        "name": "user",
+                        "type": "text",
+                        "label": "Username",
+                        "value": "",
+                        "placeholder": "Spotify username"
+                    },
+                    {
+                        "name": "password",
+                        "type": "password",
+                        "label": "Password",
+                        "value": ""
+                    },
           {
             "type": "label",
             "value": "",
@@ -66,3 +66,4 @@
     ]
   }
 }
+
