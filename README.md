@@ -1,4 +1,4 @@
-# <img src='https://raw.githack.com/FortAwesome/Font-Awesome/master/svgs/solid/music.svg' card_color='#40db60' width='50' height='50' style='vertical-align:bottom'/> Spotify
+# <img src='Spotify_Icon.png' card_color='#40db60' width='50' height='50' style='vertical-align:bottom'/> Spotify
 Listen to music from your Spotify Premium music account
 
 ## About
