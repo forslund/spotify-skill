@@ -72,7 +72,7 @@ class SpotifyNotAuthorizedError(Exception):
 MANAGED_PLATFORMS = ['mycroft_mark_1', 'mycroft_mark_2pi']
 # Return value definition indication nothing was found
 # (confidence None, data None)
-NOTHING_FOUND = (None, None)
+NOTHING_FOUND = (None, 0.0)
 
 
 def update_librespot():
