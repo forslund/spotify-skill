@@ -523,8 +523,13 @@ class SpotifySkill(CommonPlaySkill):
             bonus += 0.1
         data = self.spotify.search(album, type='album')
         if data and data['albums']['items']:
-            best = data['albums']['items'][0]['name']
-            confidence = min(fuzzy_match(best.lower(), album) + bonus, 1.0)
+            best = data['albums']['items'][0]['name'].lower()
+            # Also check with parentheses removed for example
+            # "'Hello Nasty ( Deluxe Version/Remastered 2009" as "Hello Nasty")
+            best_stripped = re.sub(r'\(.+\)', '', best)
+            confidence = max(fuzzy_match(best, album),
+                             fuzzy_match(best_stripped, album))
+            confidence = min(confidence + bonus, 1.0)
             return (confidence,
                     {
                         'data': data,
