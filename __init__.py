@@ -556,6 +556,7 @@ class SpotifySkill(CommonPlaySkill):
                 raise NoSpotifyDevicesError
 
             if data['type'] == 'continue':
+                self.acknowledge()
                 self.continue_current_playlist(dev)
             elif data['type'] == 'playlist':
                 self.start_playlist_playback(dev, data['name'],
