@@ -427,19 +427,8 @@ class SpotifySkill(CommonPlaySkill):
         # Check artist
         match = re.match(self.translate_regex('artist'), phrase)
         if match:
-            bonus += 0.1
             artist = match.groupdict()['artist']
-            data = self.spotify.search(artist, type='artist')
-            if data and data['artists']['items']:
-                best = data['artists']['items'][0]['name']
-                confidence = fuzzy_match(best, artist.lower()) + bonus
-                confidence = min(confidence, 1.0)
-                return (confidence,
-                        {
-                            'data': data,
-                            'name': None,
-                            'type': 'artist'
-                        })
+            return self.query_artist(artist, bonus)
         match = re.match(self.translate_regex('song'), phrase)
         if match:
             song = match.groupdict()['track']
@@ -472,21 +461,48 @@ class SpotifySkill(CommonPlaySkill):
                     })
 
         # Check for artist
+        self.log.info('Checking artists')
         conf, data = self.query_artist(phrase, bonus)
         if conf and conf > 0.5:
             return conf, data
 
+        self.log.info('Checking albums')
         # Check for album
         conf, data = self.query_album(phrase, bonus)
         if conf and conf > 0.5:
             return conf, data
 
         # Check for track
-        conf, data = self.query_track(phrase, bonus)
+        self.log.info('Checking tracks')
+        conf, data = self.query_song(phrase, bonus)
         if conf and conf > 0.5:
             return conf, data
 
         return NOTHING_FOUND
+
+    def query_artist(self, artist, bonus=0.0):
+        """Try to find an artist.
+
+            Arguments:
+                artist (str): Artist to search for
+                bonus (float): Any bonus to apply to the confidence
+
+            Returns: Tuple with confidence and data or NOTHING_FOUND
+        """
+        bonus += 0.1
+        data = self.spotify.search(artist, type='artist')
+        if data and data['artists']['items']:
+            best = data['artists']['items'][0]['name']
+            confidence = fuzzy_match(best, artist.lower()) + bonus
+            confidence = min(confidence, 1.0)
+            return (confidence,
+                    {
+                        'data': data,
+                        'name': None,
+                        'type': 'artist'
+                    })
+        else:
+            return NOTHING_FOUND
 
     def query_album(self, album, bonus):
         """ Try to find an album.
