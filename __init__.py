@@ -438,8 +438,11 @@ class SpotifySkill(CommonPlaySkill):
     def generic_query(self, phrase, bonus):
         """ Check for a generic query, not asking for any special feature.
 
-            This will parse the entire requested string against a playlist
-            first and foremost and an album secondly.
+            This will try to parse the entire phrase in the following order
+            - As a user playlist
+            - As an album
+            - As a track
+            - As a public playlist
 
             Arguments:
                 phrase (str): Text to match against
