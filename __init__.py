@@ -478,6 +478,12 @@ class SpotifySkill(CommonPlaySkill):
         if conf and conf > 0.5:
             return conf, data
 
+        # Check for public playlist
+        self.log.info('Checking tracks')
+        conf, data = self.get_best_public_playlist(phrase)
+        if conf and conf > 0.5:
+            return conf, data
+
         return NOTHING_FOUND
 
     def query_artist(self, artist, bonus=0.0):
@@ -557,8 +563,6 @@ class SpotifySkill(CommonPlaySkill):
                            'type': 'playlist'})
         else:
             return self.get_best_public_playlist(playlist)
-
-        return NOTHING_FOUND
 
     def query_song(self, song, bonus):
         """ Try to find a song.
