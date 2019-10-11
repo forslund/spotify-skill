@@ -75,6 +75,26 @@ MANAGED_PLATFORMS = ['mycroft_mark_1', 'mycroft_mark_2pi']
 NOTHING_FOUND = (None, 0.0)
 
 
+def best_confidence(title, query):
+    """Find best match for a title against a query.
+
+    Some titles include ( Remastered 2016 ) and similar info. This method
+    will test the raw title and a version that has been parsed to remove
+    such information.
+
+    Arguments:
+        title: title name from spotify search
+        query: query from user
+
+    Returns:
+        (float) best condidence
+    """
+    best = title.lower()
+    best_stripped = re.sub(r'\(.+\)', '', best)
+    return max(fuzzy_match(best, query),
+               fuzzy_match(best_stripped, query))
+
+
 def update_librespot():
     try:
         call(["bash", join(dirname(abspath(__file__)), "requirements.sh")])
@@ -528,17 +548,18 @@ class SpotifySkill(CommonPlaySkill):
         by_word = ' {} '.format(self.translate('by'))
         if len(album.split(by_word)) > 1:
             album, artist = album.split(by_word)
-            album = '*{}* artist:{}'.format(album, artist)
+            album_search = '*{}* artist:{}'.format(album, artist)
             bonus += 0.1
-        data = self.spotify.search(album, type='album')
+        else:
+            album_search = album
+        data = self.spotify.search(album_search, type='album')
         if data and data['albums']['items']:
             best = data['albums']['items'][0]['name'].lower()
+            confidence = best_confidence(best, album)
             # Also check with parentheses removed for example
             # "'Hello Nasty ( Deluxe Version/Remastered 2009" as "Hello Nasty")
-            best_stripped = re.sub(r'\(.+\)', '', best)
-            confidence = max(fuzzy_match(best, album),
-                             fuzzy_match(best_stripped, album))
             confidence = min(confidence + bonus, 1.0)
+            self.log.info((album, best, confidence))
             return (confidence,
                     {
                         'data': data,
