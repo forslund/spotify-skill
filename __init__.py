@@ -75,6 +75,22 @@ MANAGED_PLATFORMS = ['mycroft_mark_1', 'mycroft_mark_2pi']
 NOTHING_FOUND = (None, 0.0)
 
 
+def best_result(results):
+    """Return best result from a list of result tuples.
+
+    Arguments:
+        results (list): list of spotify result tuples
+
+    Returns:
+        Best match in list
+    """
+    if len(results) == 0:
+        return NOTHING_FOUND
+    else:
+        results.reverse()
+        return sorted(results, key=lambda x:x[0])[-1]
+
+
 def best_confidence(title, query):
     """Find best match for a title against a query.
 
@@ -471,43 +487,55 @@ class SpotifySkill(CommonPlaySkill):
             Returns: Tuple with confidence and data or NOTHING_FOUND
         """
         self.log.info('Handling "{}" as a genric query...'.format(phrase))
+        results = []
 
         self.log.info('Checking users playlists')
         playlist, conf = self.get_best_user_playlist(phrase)
-        if conf and conf > 0.5:
+        if playlist:
             uri = self.playlists[playlist]
-            return (conf,
-                    {
+            data = {
                         'data': uri,
                         'name': playlist,
                         'type': 'playlist'
-                    })
+                   }
+        if conf and conf > 0.8:
+            return (conf, data)
+        elif conf and conf > 0.5:
+            results.append((conf, data))
 
         # Check for artist
         self.log.info('Checking artists')
         conf, data = self.query_artist(phrase, bonus)
-        if conf and conf > 0.5:
+        if conf and conf > 0.8:
             return conf, data
+        elif conf and conf > 0.5:
+            results.append((conf, data))
 
         self.log.info('Checking albums')
         # Check for album
         conf, data = self.query_album(phrase, bonus)
-        if conf and conf > 0.5:
+        if conf and conf > 0.8:
             return conf, data
+        elif conf and conf > 0.5:
+            results.append((conf, data))
 
         # Check for track
         self.log.info('Checking tracks')
         conf, data = self.query_song(phrase, bonus)
-        if conf and conf > 0.5:
+        if conf and conf > 0.8:
             return conf, data
+        elif conf and conf > 0.5:
+            results.append((conf, data))
 
         # Check for public playlist
         self.log.info('Checking tracks')
         conf, data = self.get_best_public_playlist(phrase)
-        if conf and conf > 0.5:
+        if conf and conf > 0.8:
             return conf, data
+        elif conf and conf > 0.5:
+            results.append((conf, data))
 
-        return NOTHING_FOUND
+        return best_result(results)
 
     def query_artist(self, artist, bonus=0.0):
         """Try to find an artist.
