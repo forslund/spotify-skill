@@ -603,12 +603,20 @@ class SpotifySkill(CommonPlaySkill):
         by_word = ' {} '.format(self.translate('by'))
         if len(song.split(by_word)) > 1:
             song, artist = song.split(by_word)
-            song = '*{}* artist:{}'.format(song, artist)
+            song_search = '*{}* artist:{}'.format(song, artist)
+        else:
+            song_search = song
 
-        data = self.spotify.search(song, type='track')
+        data = self.spotify.search(song_search, type='track')
         if data and len(data['tracks']['items']) > 0:
-            return (1.0, {'data': data, 'name': None, 'type': 'track'})
-        return NOTHING_FOUND
+            tracks = [(best_confidence(d['name'], song), d)
+                      for d in data['tracks']['items']]
+            tracks.sort(key=lambda x: x[0])
+            data['tracks']['items'] = [tracks[-1][1]]
+            return (tracks[-1][0] + bonus,
+                    {'data': data, 'name': None, 'type': 'track'})
+        else:
+            return NOTHING_FOUND
 
     def CPS_start(self, phrase, data):
         """ Handler for common play framework start playback request. """
