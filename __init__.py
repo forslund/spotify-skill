@@ -516,17 +516,17 @@ class SpotifySkill(CommonPlaySkill):
         elif conf and conf > MATCH_CONFIDENCE:
             results.append((conf, data))
 
-        self.log.info('Checking albums')
-        # Check for album
-        conf, data = self.query_album(phrase, bonus)
+        # Check for track
+        self.log.info('Checking tracks')
+        conf, data = self.query_song(phrase, bonus)
         if conf and conf > DIRECT_RESPONSE_CONFIDENCE:
             return conf, data
         elif conf and conf > MATCH_CONFIDENCE:
             results.append((conf, data))
 
-        # Check for track
-        self.log.info('Checking tracks')
-        conf, data = self.query_song(phrase, bonus)
+        # Check for album
+        self.log.info('Checking albums')
+        conf, data = self.query_album(phrase, bonus)
         if conf and conf > DIRECT_RESPONSE_CONFIDENCE:
             return conf, data
         elif conf and conf > MATCH_CONFIDENCE:
