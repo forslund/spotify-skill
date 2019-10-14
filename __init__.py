@@ -72,7 +72,43 @@ class SpotifyNotAuthorizedError(Exception):
 MANAGED_PLATFORMS = ['mycroft_mark_1', 'mycroft_mark_2pi']
 # Return value definition indication nothing was found
 # (confidence None, data None)
-NOTHING_FOUND = (None, None)
+NOTHING_FOUND = (None, 0.0)
+
+
+def best_result(results):
+    """Return best result from a list of result tuples.
+
+    Arguments:
+        results (list): list of spotify result tuples
+
+    Returns:
+        Best match in list
+    """
+    if len(results) == 0:
+        return NOTHING_FOUND
+    else:
+        results.reverse()
+        return sorted(results, key=lambda x:x[0])[-1]
+
+
+def best_confidence(title, query):
+    """Find best match for a title against a query.
+
+    Some titles include ( Remastered 2016 ) and similar info. This method
+    will test the raw title and a version that has been parsed to remove
+    such information.
+
+    Arguments:
+        title: title name from spotify search
+        query: query from user
+
+    Returns:
+        (float) best condidence
+    """
+    best = title.lower()
+    best_stripped = re.sub(r'\(.+\)', '', best)
+    return max(fuzzy_match(best, query),
+               fuzzy_match(best_stripped, query))
 
 
 def update_librespot():
@@ -427,19 +463,8 @@ class SpotifySkill(CommonPlaySkill):
         # Check artist
         match = re.match(self.translate_regex('artist'), phrase)
         if match:
-            bonus += 0.1
             artist = match.groupdict()['artist']
-            data = self.spotify.search(artist, type='artist')
-            if data and data['artists']['items']:
-                best = data['artists']['items'][0]['name']
-                confidence = fuzzy_match(best, artist.lower()) + bonus
-                confidence = min(confidence, 1.0)
-                return (confidence,
-                        {
-                            'data': data,
-                            'name': None,
-                            'type': 'artist'
-                        })
+            return self.query_artist(artist, bonus)
         match = re.match(self.translate_regex('song'), phrase)
         if match:
             song = match.groupdict()['track']
@@ -449,8 +474,11 @@ class SpotifySkill(CommonPlaySkill):
     def generic_query(self, phrase, bonus):
         """ Check for a generic query, not asking for any special feature.
 
-            This will parse the entire requested string against a playlist
-            first and foremost and an album secondly.
+            This will try to parse the entire phrase in the following order
+            - As a user playlist
+            - As an album
+            - As a track
+            - As a public playlist
 
             Arguments:
                 phrase (str): Text to match against
@@ -458,17 +486,80 @@ class SpotifySkill(CommonPlaySkill):
 
             Returns: Tuple with confidence and data or NOTHING_FOUND
         """
-        playlist, conf = self.get_best_playlist(phrase)
-        if conf > 0.5:
+        self.log.info('Handling "{}" as a genric query...'.format(phrase))
+        results = []
+
+        self.log.info('Checking users playlists')
+        playlist, conf = self.get_best_user_playlist(phrase)
+        if playlist:
             uri = self.playlists[playlist]
-            return (conf,
-                    {
+            data = {
                         'data': uri,
                         'name': playlist,
                         'type': 'playlist'
+                   }
+        if conf and conf > 0.8:
+            return (conf, data)
+        elif conf and conf > 0.5:
+            results.append((conf, data))
+
+        # Check for artist
+        self.log.info('Checking artists')
+        conf, data = self.query_artist(phrase, bonus)
+        if conf and conf > 0.8:
+            return conf, data
+        elif conf and conf > 0.5:
+            results.append((conf, data))
+
+        self.log.info('Checking albums')
+        # Check for album
+        conf, data = self.query_album(phrase, bonus)
+        if conf and conf > 0.8:
+            return conf, data
+        elif conf and conf > 0.5:
+            results.append((conf, data))
+
+        # Check for track
+        self.log.info('Checking tracks')
+        conf, data = self.query_song(phrase, bonus)
+        if conf and conf > 0.8:
+            return conf, data
+        elif conf and conf > 0.5:
+            results.append((conf, data))
+
+        # Check for public playlist
+        self.log.info('Checking tracks')
+        conf, data = self.get_best_public_playlist(phrase)
+        if conf and conf > 0.8:
+            return conf, data
+        elif conf and conf > 0.5:
+            results.append((conf, data))
+
+        return best_result(results)
+
+    def query_artist(self, artist, bonus=0.0):
+        """Try to find an artist.
+
+            Arguments:
+                artist (str): Artist to search for
+                bonus (float): Any bonus to apply to the confidence
+
+            Returns: Tuple with confidence and data or NOTHING_FOUND
+        """
+        bonus += 0.1
+        data = self.spotify.search(artist, type='artist')
+        if data and data['artists']['items']:
+            best = data['artists']['items'][0]['name']
+            confidence = fuzzy_match(best, artist.lower()) + bonus
+            confidence = min(confidence, 1.0)
+            return (confidence,
+                    {
+                        'data': data,
+                        'name': None,
+                        'type': 'artist'
                     })
         else:
-            return self.query_album(phrase, bonus)
+            return NOTHING_FOUND
 
     def query_album(self, album, bonus):
         """ Try to find an album.
@@ -485,12 +576,18 @@ class SpotifySkill(CommonPlaySkill):
         by_word = ' {} '.format(self.translate('by'))
         if len(album.split(by_word)) > 1:
             album, artist = album.split(by_word)
-            album = '*{}* artist:{}'.format(album, artist)
+            album_search = '*{}* artist:{}'.format(album, artist)
             bonus += 0.1
-        data = self.spotify.search(album, type='album')
+        else:
+            album_search = album
+        data = self.spotify.search(album_search, type='album')
         if data and data['albums']['items']:
-            best = data['albums']['items'][0]['name']
-            confidence = min(fuzzy_match(best.lower(), album) + bonus, 1.0)
+            best = data['albums']['items'][0]['name'].lower()
+            confidence = best_confidence(best, album)
+            # Also check with parentheses removed for example
+            # "'Hello Nasty ( Deluxe Version/Remastered 2009" as "Hello Nasty")
+            confidence = min(confidence + bonus, 1.0)
+            self.log.info((album, best, confidence))
             return (confidence,
                     {
                         'data': data,
@@ -510,22 +607,14 @@ class SpotifySkill(CommonPlaySkill):
 
             Returns: Tuple with confidence and data or NOTHING_FOUND
         """
-        result, conf = self.get_best_playlist(playlist)
+        result, conf = self.get_best_user_playlist(playlist)
         if playlist and conf > 0.5:
             uri = self.playlists[result]
             return (conf, {'data': uri,
                            'name': playlist,
                            'type': 'playlist'})
         else:
-            data = self.spotify.search(playlist, type='playlist')
-            if data and data['playlists']['items']:
-                best = data['playlists']['items'][0]
-                confidence = fuzzy_match(best['name'].lower(), playlist)
-                return (confidence, {'data': best,
-                                     'name': best['name'],
-                                     'type': 'playlist'})
-
-        return NOTHING_FOUND
+            return self.get_best_public_playlist(playlist)
 
     def query_song(self, song, bonus):
         """ Try to find a song.
@@ -542,12 +631,20 @@ class SpotifySkill(CommonPlaySkill):
         by_word = ' {} '.format(self.translate('by'))
         if len(song.split(by_word)) > 1:
             song, artist = song.split(by_word)
-            song = '*{}* artist:{}'.format(song, artist)
+            song_search = '*{}* artist:{}'.format(song, artist)
+        else:
+            song_search = song
 
-        data = self.spotify.search(song, type='track')
+        data = self.spotify.search(song_search, type='track')
         if data and len(data['tracks']['items']) > 0:
-            return (1.0, {'data': data, 'name': None, 'type': 'track'})
-        return NOTHING_FOUND
+            tracks = [(best_confidence(d['name'], song), d)
+                      for d in data['tracks']['items']]
+            tracks.sort(key=lambda x: x[0])
+            data['tracks']['items'] = [tracks[-1][1]]
+            return (tracks[-1][0] + bonus,
+                    {'data': data, 'name': None, 'type': 'track'})
+        else:
+            return NOTHING_FOUND
 
     def CPS_start(self, phrase, data):
         """ Handler for common play framework start playback request. """
@@ -713,7 +810,7 @@ class SpotifySkill(CommonPlaySkill):
 
         return None
 
-    def get_best_playlist(self, playlist):
+    def get_best_user_playlist(self, playlist):
         """ Get best playlist matching the provided name
 
         Arguments:
@@ -727,7 +824,18 @@ class SpotifySkill(CommonPlaySkill):
             key, confidence = match_one(playlist.lower(), playlists)
             if confidence > 0.7:
                 return key, confidence
-        return None, 0
+        return NOTHING_FOUND
+
+    def get_best_public_playlist(self, playlist):
+        data = self.spotify.search(playlist, type='playlist')
+        if data and data['playlists']['items']:
+            best = data['playlists']['items'][0]
+            confidence = fuzzy_match(best['name'].lower(), playlist)
+            if confidence > 0.7:
+                return (confidence, {'data': best,
+                                     'name': best['name'],
+                                     'type': 'playlist'})
+        return NOTHING_FOUND
 
     def continue_current_playlist(self, dev):
         """ Send the play command to the selected device. """
