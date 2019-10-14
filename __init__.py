@@ -106,7 +106,7 @@ def best_confidence(title, query):
         (float) best condidence
     """
     best = title.lower()
-    best_stripped = re.sub(r'\(.+\)', '', best)
+    best_stripped = re.sub(r'(\(.+\)|-.+)$', '', best).strip()
     return max(fuzzy_match(best, query),
                fuzzy_match(best_stripped, query))
 
