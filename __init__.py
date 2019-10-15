@@ -74,6 +74,11 @@ MANAGED_PLATFORMS = ['mycroft_mark_1', 'mycroft_mark_2pi']
 # (confidence None, data None)
 NOTHING_FOUND = (None, 0.0)
 
+# Confidence levels for generic play handling
+DIRECT_RESPONSE_CONFIDENCE = 0.8
+
+MATCH_CONFIDENCE = 0.5
+
 
 def best_result(results):
     """Return best result from a list of result tuples.
@@ -498,41 +503,41 @@ class SpotifySkill(CommonPlaySkill):
                         'name': playlist,
                         'type': 'playlist'
                    }
-        if conf and conf > 0.8:
+        if conf and conf > DIRECT_RESPONSE_CONFIDENCE:
             return (conf, data)
-        elif conf and conf > 0.5:
+        elif conf and conf > MATCH_CONFIDENCE:
             results.append((conf, data))
 
         # Check for artist
         self.log.info('Checking artists')
         conf, data = self.query_artist(phrase, bonus)
-        if conf and conf > 0.8:
+        if conf and conf > DIRECT_RESPONSE_CONFIDENCE:
             return conf, data
-        elif conf and conf > 0.5:
-            results.append((conf, data))
-
-        self.log.info('Checking albums')
-        # Check for album
-        conf, data = self.query_album(phrase, bonus)
-        if conf and conf > 0.8:
-            return conf, data
-        elif conf and conf > 0.5:
+        elif conf and conf > MATCH_CONFIDENCE:
             results.append((conf, data))
 
         # Check for track
         self.log.info('Checking tracks')
         conf, data = self.query_song(phrase, bonus)
-        if conf and conf > 0.8:
+        if conf and conf > DIRECT_RESPONSE_CONFIDENCE:
             return conf, data
-        elif conf and conf > 0.5:
+        elif conf and conf > MATCH_CONFIDENCE:
+            results.append((conf, data))
+
+        # Check for album
+        self.log.info('Checking albums')
+        conf, data = self.query_album(phrase, bonus)
+        if conf and conf > DIRECT_RESPONSE_CONFIDENCE:
+            return conf, data
+        elif conf and conf > MATCH_CONFIDENCE:
             results.append((conf, data))
 
         # Check for public playlist
         self.log.info('Checking tracks')
         conf, data = self.get_best_public_playlist(phrase)
-        if conf and conf > 0.8:
+        if conf and conf > DIRECT_RESPONSE_CONFIDENCE:
             return conf, data
-        elif conf and conf > 0.5:
+        elif conf and conf > MATCH_CONFIDENCE:
             results.append((conf, data))
 
         return best_result(results)
