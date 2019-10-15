@@ -106,7 +106,7 @@ def best_confidence(title, query):
         (float) best condidence
     """
     best = title.lower()
-    best_stripped = re.sub(r'\(.+\)', '', best)
+    best_stripped = re.sub(r'(\(.+\)|-.+)$', '', best).strip()
     return max(fuzzy_match(best, query),
                fuzzy_match(best_stripped, query))
 
@@ -640,6 +640,13 @@ class SpotifySkill(CommonPlaySkill):
             tracks = [(best_confidence(d['name'], song), d)
                       for d in data['tracks']['items']]
             tracks.sort(key=lambda x: x[0])
+            tracks.reverse() # Place best matches first
+            # Find pretty similar tracks to the best match
+            tracks = [t for t in tracks if t[0] > tracks[0][0] - 0.1]
+            # Sort remaining tracks by popularity
+            tracks.sort(key=lambda x: x[1]['popularity'])
+            self.log.debug([(t[0], t[1]['name'], t[1]['artists'][0]['name'])
+                            for t in tracks])
             data['tracks']['items'] = [tracks[-1][1]]
             return (tracks[-1][0] + bonus,
                     {'data': data, 'name': None, 'type': 'track'})
