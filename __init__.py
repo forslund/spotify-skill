@@ -197,7 +197,11 @@ class SpotifySkill(CommonPlaySkill):
                 'user' in self.settings and 'password' in self.settings):
 
             # Disable librespot logging if not specifically requested
-            outs = None if 'librespot_log' in self.settings else DEVNULL
+            log_level = self.config_core.get('log_level', '')
+            if 'librespot_log' in self.settings or log_level == 'DEBUG':
+                outs = None
+            else:
+                outs = DEVNULL
 
             # TODO: Error message when provided username/password don't work
             self.process = Popen([path, '-n', self.device_name,
