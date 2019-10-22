@@ -1,0 +1,7 @@
+{
+  "play_query": "songs by queen",
+  "play_query_match": {
+    "phrase": "songs by queen",
+    "confidence_threshold":  0.8
+  }
+}

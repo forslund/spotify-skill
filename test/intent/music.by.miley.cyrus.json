@@ -1,0 +1,7 @@
+{
+  "play_query": "music by miley cyrus",
+  "play_query_match": {
+    "phrase": "music by miley cyrus",
+    "confidence_threshold":  0.8
+  }
+}

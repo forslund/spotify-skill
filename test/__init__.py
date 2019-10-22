@@ -1,16 +1,48 @@
+import json
+from os.path import dirname, join
+
 from test.integrationtests.skills.skill_tester import SkillTest
 
 import mock
 
+
+def load_mock_data(filename):
+    path = join(dirname(__file__), filename)
+    with open(path) as f:
+        return json.load(f)
+
+
 def test_runner(skill, example, emitter, loader):
 
-    devices = [{u'name': u'TESTING', u'volume_percent': 65,
-                u'is_active': False, u'is_restricted': False,
-                u'type': u'Speaker',
-                u'id': u'b2abb4a01ca748c4cee2c57aad1174141d531710'}]
-
     s = [s for s in loader.skills if s and s.root_dir == skill]
-    s[0].spotify = mock.MagicMock()
-    s[0].spotify.get_devices.return_value = devices
-    s[0].spotify.is_playing.return_value = False
-    return SkillTest(skill, example, emitter).run(loader)
+    mockify = mock.MagicMock()
+    if example.endswith('sample1.intent.json'):
+        devices = [{u'name': u'TESTING', u'volume_percent': 65,
+                    u'is_active': False, u'is_restricted': False,
+                    u'type': u'Speaker',
+                    u'id': u'b2abb4a01ca748c4cee2c57aad1174141d531710'}]
+
+        s[0].spotify = mockify
+        s[0].spotify.get_devices.return_value = devices
+        s[0].spotify.is_playing.return_value = False
+        res = SkillTest(skill, example, emitter).run(loader)
+    elif (example.endswith('something.by.the.beatles.json') or
+          example.endswith('the.artist.the.beatles.json')):
+        mockify.search.return_value = load_mock_data('beatles.json')
+        s[0].spotify = mockify
+        res = SkillTest(skill, example, emitter).run(loader)
+        mockify.search.assert_called_with('the beatles', type='artist')
+    elif example.endswith('music.by.miley.cyrus.json'):
+        mockify.search.return_value = load_mock_data('miley_cyrus.json')
+        s[0].spotify = mockify
+        res = SkillTest(skill, example, emitter).run(loader)
+        mockify.search.assert_called_with('miley cyrus', type='artist')
+    elif example.endswith('songs.by.queen.json'):
+        mockify.search.return_value = load_mock_data('queen.json')
+        s[0].spotify = mockify
+        res = SkillTest(skill, example, emitter).run(loader)
+        mockify.search.assert_called_with('queen', type='artist')
+    else:
+        print('\n\nERROR: Example {} has no mock!\n\n'.format(example))
+
+    return res
