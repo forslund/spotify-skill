@@ -16,7 +16,7 @@ def test_runner(skill, example, emitter, loader):
 
     s = [s for s in loader.skills if s and s.root_dir == skill]
     mockify = mock.MagicMock()
-    if example.endswith('sample1.intent.json'):
+    if example.endswith('what.devices.json'):
         devices = [{u'name': u'TESTING', u'volume_percent': 65,
                     u'is_active': False, u'is_restricted': False,
                     u'type': u'Speaker',
