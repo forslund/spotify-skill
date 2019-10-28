@@ -1,0 +1,7 @@
+{
+  "play_query": "the album appetite for destruction",
+  "play_query_match": {
+    "phrase": "the album appetite for destruction",
+    "confidence_threshold":  0.8
+  }
+}

@@ -42,6 +42,18 @@ def test_runner(skill, example, emitter, loader):
         s[0].spotify = mockify
         res = SkillTest(skill, example, emitter).run(loader)
         mockify.search.assert_called_with('queen', type='artist')
+    elif example.endswith('the.album.abbey.road.json'):
+        mockify.search.return_value = load_mock_data('abbey_road.json')
+        s[0].spotify = mockify
+        res = SkillTest(skill, example, emitter).run(loader)
+        mockify.search.assert_called_with('abbey road', type='album')
+    elif example.endswith('the.album.appetite.for.destruction.json'):
+        mockify.search.return_value = load_mock_data(
+                'appetite_for_destruction.json')
+        s[0].spotify = mockify
+        res = SkillTest(skill, example, emitter).run(loader)
+        mockify.search.assert_called_with('appetite for destruction',
+                                          type='album')
     else:
         print('\n\nERROR: Example {} has no mock!\n\n'.format(example))
 
