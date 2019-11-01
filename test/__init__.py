@@ -7,7 +7,7 @@ import mock
 
 
 def load_mock_data(filename):
-    path = join(dirname(__file__), filename)
+    path = join(dirname(__file__), 'data', filename)
     with open(path) as f:
         return json.load(f)
 
