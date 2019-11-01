@@ -1,0 +1,7 @@
+{
+  "play_query": "track don't stop believin",
+  "play_query_match": {
+    "phrase": "track don't stop believin",
+    "confidence_threshold":  0.8
+  }
+}

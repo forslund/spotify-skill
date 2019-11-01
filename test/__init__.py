@@ -54,6 +54,27 @@ def test_runner(skill, example, emitter, loader):
         res = SkillTest(skill, example, emitter).run(loader)
         mockify.search.assert_called_with('appetite for destruction',
                                           type='album')
+    elif (example.endswith('track.1999.json') or
+          example.endswith('song.1999.json')):
+        mockify.search.return_value = load_mock_data('1999.json')
+        s[0].spotify = mockify
+        res = SkillTest(skill, example, emitter).run(loader)
+        mockify.search.assert_called_with('1999', type='track')
+    elif example.endswith('track.dont.stop.believin.json'):
+        mockify.search.return_value = load_mock_data('dont_stop_believin.json')
+        s[0].spotify = mockify
+        res = SkillTest(skill, example, emitter).run(loader)
+        mockify.search.assert_called_with('don\'t stop believin', type='track')
+    elif example.endswith('the.song.enter.sandman.json'):
+        mockify.search.return_value = load_mock_data('enter_sandman.json')
+        s[0].spotify = mockify
+        res = SkillTest(skill, example, emitter).run(loader)
+        mockify.search.assert_called_with('enter sandman', type='track')
+    elif example.endswith('the.track.crazy.json'):
+        mockify.search.return_value = load_mock_data('crazy.json')
+        s[0].spotify = mockify
+        res = SkillTest(skill, example, emitter).run(loader)
+        mockify.search.assert_called_with('crazy', type='track')
     else:
         print('\n\nERROR: Example {} has no mock!\n\n'.format(example))
 

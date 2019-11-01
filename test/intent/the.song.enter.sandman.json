@@ -1,0 +1,7 @@
+{
+  "play_query": "the song enter sandman",
+  "play_query_match": {
+    "phrase": "the song enter sandman",
+    "confidence_threshold":  0.8
+  }
+}
