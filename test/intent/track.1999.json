@@ -1,0 +1,7 @@
+{
+  "play_query": "track 1999",
+  "play_query_match": {
+    "phrase": "track 1999",
+    "confidence_threshold":  0.8
+  }
+}

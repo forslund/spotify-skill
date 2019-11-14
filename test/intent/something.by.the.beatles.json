@@ -1,0 +1,7 @@
+{
+  "play_query": "something by the beatles",
+  "play_query_match": {
+    "phrase": "something by the beatles",
+    "confidence_threshold":  0.8
+  }
+}

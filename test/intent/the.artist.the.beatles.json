@@ -1,0 +1,7 @@
+{
+  "play_query": "the artist the beatles",
+  "play_query_match": {
+    "phrase": "the artist the beatles",
+    "confidence_threshold":  0.8
+  }
+}

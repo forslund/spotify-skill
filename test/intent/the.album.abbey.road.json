@@ -1,0 +1,7 @@
+{
+  "play_query": "the album abbey road",
+  "play_query_match": {
+    "phrase": "the album abbey road",
+    "confidence_threshold":  0.8
+  }
+}

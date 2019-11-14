@@ -1,0 +1,7 @@
+{
+  "play_query": "the track crazy",
+  "play_query_match": {
+    "phrase": "the track crazy",
+    "confidence_threshold":  0.8
+  }
+}
