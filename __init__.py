@@ -25,6 +25,7 @@ import re
 from mycroft.skills.core import intent_handler
 from mycroft.util.parse import match_one, fuzzy_match
 from mycroft.api import DeviceApi
+from mycroft.messagebus import Message
 from requests import HTTPError
 from adapt.intent import IntentBuilder
 
@@ -363,18 +364,39 @@ class SpotifySkill(CommonPlaySkill):
 
         # Get the current track info
         try:
-            text = status['item']['artists'][0]['name'] + ': '
+            artist = status['item']['artists'][0]['name']
         except Exception:
-            text = ""
+            artist = ''
         try:
-            text += status['item']['name']
+            track = status['item']['name']
         except Exception:
-            pass
+            track = ''
+        try:
+            image = status['item']['album']['images'][0]['url']
+        except Exception:
+            image = ''
+
+        self.CPS_send_status(artist=artist, track=track, image=image)
+
+        # Mark-1
+        if artist and track:
+            text = '{}: {}'.format(artist, track)
+        else:
+            text = ''
 
         # Update the "Now Playing" display if needed
         if text != self.mouth_text:
             self.mouth_text = text
             self.enclosure.mouth_text(text)
+
+    def CPS_send_status(self, artist='', track='', image=''):
+        data = {'skill': self.name,
+                'artist': artist,
+                'track': track,
+                'image': image,
+                'status': None  # TODO Add status system
+                }
+        self.bus.emit(Message('play:status', data))
 
     ######################################################################
     # Intent handling
