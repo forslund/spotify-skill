@@ -1,1 +1,1 @@
-(der Künstler|die Gruppe|die Band|etwas von) (?P<artist>.+)
+(dem Künstler|der Gruppe|der Band|(etwas|irgendetwas|Zeug|Musik|Lieder) (von|vom)) (?P<artist>.+)
