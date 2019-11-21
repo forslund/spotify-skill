@@ -1161,7 +1161,7 @@ class SpotifySkill(CommonPlaySkill):
             self.speak_dialog('NothingPlaying')
 
     def handle_stop(self, message):
-        self.stop()
+        self.bus.emit(Message('mycroft.stop'))
 
     def do_stop(self):
         try:
