@@ -94,7 +94,7 @@ def best_result(results):
         return NOTHING_FOUND
     else:
         results.reverse()
-        return sorted(results, key=lambda x:x[0])[-1]
+        return sorted(results, key=lambda x: x[0])[-1]
 
 
 def best_confidence(title, query):
@@ -668,7 +668,7 @@ class SpotifySkill(CommonPlaySkill):
             tracks = [(best_confidence(d['name'], song), d)
                       for d in data['tracks']['items']]
             tracks.sort(key=lambda x: x[0])
-            tracks.reverse() # Place best matches first
+            tracks.reverse()  # Place best matches first
             # Find pretty similar tracks to the best match
             tracks = [t for t in tracks if t[0] > tracks[0][0] - 0.1]
             # Sort remaining tracks by popularity
