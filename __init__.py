@@ -212,7 +212,7 @@ class SpotifySkill(CommonPlaySkill):
             if self.process and self.process.poll() is not None:
                 self.log.error('librespot failed to start.')
                 # libreSpot shut down immediately.  Bad user/password?
-                if self.settings['user']:
+                if self.settings.get('user'):
                     self.librespot_failed = True
                 self.process = None
                 self.librespot_starting = False
@@ -279,7 +279,10 @@ class SpotifySkill(CommonPlaySkill):
             self.device_name = DeviceApi().get().get('name')
 
     def failed_auth(self):
-        if not self.settings["user"]:
+        if 'user' not in self.settings:
+            self.log.error('Settings hasn\'t been received yet')
+            self.speak_dialog('NoSettingsReceived')
+        elif not self.settings.get("user"):
             self.log.error('User info has not been set.')
             # Assume this is initial setup
             self.speak_dialog('NotConfigured')
