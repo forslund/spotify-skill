@@ -94,7 +94,7 @@ def best_result(results):
         return NOTHING_FOUND
     else:
         results.reverse()
-        return sorted(results, key=lambda x:x[0])[-1]
+        return sorted(results, key=lambda x: x[0])[-1]
 
 
 def best_confidence(title, query):
@@ -125,13 +125,13 @@ def update_librespot():
 
 
 def status_info(status):
-    """ Return track, artist, album tuple from spotify status.
+    """Return track, artist, album tuple from spotify status.
 
-        Arguments:
-            status (dict): Spotify status info
+    Arguments:
+        status (dict): Spotify status info
 
-        Returns:
-            tuple (track, artist, album)
+    Returns:
+        tuple (track, artist, album)
      """
     try:
         artist = status['item']['artists'][0]['name']
@@ -186,9 +186,7 @@ class SpotifySkill(CommonPlaySkill):
         return self.regexes[regex]
 
     def launch_librespot(self):
-        """ Launch the librespot binary for the Mark-1.
-        TODO: Discovery mode
-        """
+        """Launch the librespot binary for the Mark-1."""
         self.librespot_starting = True
         path = self.settings.get('librespot_path', None)
         if self.platform in MANAGED_PLATFORMS and not path:
@@ -214,7 +212,7 @@ class SpotifySkill(CommonPlaySkill):
             if self.process and self.process.poll() is not None:
                 self.log.error('librespot failed to start.')
                 # libreSpot shut down immediately.  Bad user/password?
-                if self.settings['user']:
+                if self.settings.get('user'):
                     self.librespot_failed = True
                 self.process = None
                 self.librespot_starting = False
@@ -239,8 +237,7 @@ class SpotifySkill(CommonPlaySkill):
         self.settings.set_changed_callback(self.on_websettings_changed)
         # Retry in 5 minutes
         self.schedule_repeating_event(self.on_websettings_changed,
-                                      None, 5*60,
-                                      name='SpotifyLogin')
+                                      None, 5 * 60, name='SpotifyLogin')
         if self.platform in MANAGED_PLATFORMS:
             update_librespot()
         self.on_websettings_changed()
@@ -263,7 +260,7 @@ class SpotifySkill(CommonPlaySkill):
                 self.launch_librespot()
 
     def load_credentials(self):
-        """ Retrieve credentials from the backend and connect to Spotify """
+        """Retrieve credentials from the backend and connect to Spotify."""
         try:
             creds = MycroftSpotifyCredentials(self.OAUTH_ID)
             self.spotify = SpotifyConnect(client_credentials_manager=creds)
@@ -282,7 +279,10 @@ class SpotifySkill(CommonPlaySkill):
             self.device_name = DeviceApi().get().get('name')
 
     def failed_auth(self):
-        if not self.settings["user"]:
+        if 'user' not in self.settings:
+            self.log.error('Settings hasn\'t been received yet')
+            self.speak_dialog('NoSettingsReceived')
+        elif not self.settings.get("user"):
             self.log.error('User info has not been set.')
             # Assume this is initial setup
             self.speak_dialog('NotConfigured')
@@ -295,7 +295,7 @@ class SpotifySkill(CommonPlaySkill):
     # Handle auto ducking when listener is started.
 
     def handle_listener_started(self, message):
-        """ Handle auto ducking when listener is started.
+        """Handle auto ducking when listener is started.
 
         The ducking is enabled/disabled using the skill settings on home.
 
@@ -313,7 +313,7 @@ class SpotifySkill(CommonPlaySkill):
                                           1, name='IdleCheck')
 
     def check_for_idle(self):
-        """ Repeating event checking for end of auto ducking. """
+        """Repeating event checking for end of auto ducking."""
         if not self.ducking:
             self.cancel_scheduled_event('IdleCheck')
             return
@@ -335,7 +335,7 @@ class SpotifySkill(CommonPlaySkill):
     # Mycroft display handling
 
     def start_monitor(self):
-        """ Monitoring and current song display. """
+        """Monitoring and current song display."""
         # Clear any existing event
         self.stop_monitor()
 
@@ -398,11 +398,8 @@ class SpotifySkill(CommonPlaySkill):
                 }
         self.bus.emit(Message('play:status', data))
 
-    ######################################################################
-    # Intent handling
-
     def CPS_match_query_phrase(self, phrase):
-        """ Handler for common play framework Query. """
+        """Handler for common play framework Query."""
         # Not ready to play
         if not self.playback_prerequisits_ok():
             self.log.debug('Spotify is not available to play')
@@ -468,16 +465,16 @@ class SpotifySkill(CommonPlaySkill):
             return NOTHING_FOUND
 
     def specific_query(self, phrase, bonus):
-        """ Check if the phrase can be matched against a specific spotify
-            request.
+        """
+        Check if the phrase can be matched against a specific spotify request.
 
-            This includes asking for playlists, albums, artists or songs.
+        This includes asking for playlists, albums, artists or songs.
 
-            Arguments:
-                phrase (str): Text to match against
-                bonus (float): Any existing match bonus
+        Arguments:
+            phrase (str): Text to match against
+            bonus (float): Any existing match bonus
 
-            Returns: Tuple with confidence and data or NOTHING_FOUND
+        Returns: Tuple with confidence and data or NOTHING_FOUND
         """
         # Check if playlist
         match = re.match(self.translate_regex('playlist'), phrase)
@@ -503,19 +500,19 @@ class SpotifySkill(CommonPlaySkill):
         return NOTHING_FOUND
 
     def generic_query(self, phrase, bonus):
-        """ Check for a generic query, not asking for any special feature.
+        """Check for a generic query, not asking for any special feature.
 
-            This will try to parse the entire phrase in the following order
-            - As a user playlist
-            - As an album
-            - As a track
-            - As a public playlist
+        This will try to parse the entire phrase in the following order
+        - As a user playlist
+        - As an album
+        - As a track
+        - As a public playlist
 
-            Arguments:
-                phrase (str): Text to match against
-                bonus (float): Any existing match bonus
+        Arguments:
+            phrase (str): Text to match against
+            bonus (float): Any existing match bonus
 
-            Returns: Tuple with confidence and data or NOTHING_FOUND
+        Returns: Tuple with confidence and data or NOTHING_FOUND
         """
         self.log.info('Handling "{}" as a genric query...'.format(phrase))
         results = []
@@ -571,11 +568,11 @@ class SpotifySkill(CommonPlaySkill):
     def query_artist(self, artist, bonus=0.0):
         """Try to find an artist.
 
-            Arguments:
-                artist (str): Artist to search for
-                bonus (float): Any bonus to apply to the confidence
+        Arguments:
+            artist (str): Artist to search for
+            bonus (float): Any bonus to apply to the confidence
 
-            Returns: Tuple with confidence and data or NOTHING_FOUND
+        Returns: Tuple with confidence and data or NOTHING_FOUND
         """
         bonus += 0.1
         data = self.spotify.search(artist, type='artist')
@@ -593,15 +590,15 @@ class SpotifySkill(CommonPlaySkill):
             return NOTHING_FOUND
 
     def query_album(self, album, bonus):
-        """ Try to find an album.
+        """Try to find an album.
 
-            Searches Spotify by album and artist if available.
+        Searches Spotify by album and artist if available.
 
-            Arguments:
-                album (str): Album to search for
-                bonus (float): Any bonus to apply to the confidence
+        Arguments:
+            album (str): Album to search for
+            bonus (float): Any bonus to apply to the confidence
 
-            Returns: Tuple with confidence and data or NOTHING_FOUND
+        Returns: Tuple with confidence and data or NOTHING_FOUND
         """
         data = None
         by_word = ' {} '.format(self.translate('by'))
@@ -628,15 +625,15 @@ class SpotifySkill(CommonPlaySkill):
         return NOTHING_FOUND
 
     def query_playlist(self, playlist):
-        """ Try to find a playlist.
+        """Try to find a playlist.
 
-            First searches the users playlists, then tries to find a public
-            one.
+        First searches the users playlists, then tries to find a public
+        one.
 
-            Arguments:
-                playlist (str): Playlist to search for
+        Arguments:
+            playlist (str): Playlist to search for
 
-            Returns: Tuple with confidence and data or NOTHING_FOUND
+        Returns: Tuple with confidence and data or NOTHING_FOUND
         """
         result, conf = self.get_best_user_playlist(playlist)
         if playlist and conf > 0.5:
@@ -648,15 +645,15 @@ class SpotifySkill(CommonPlaySkill):
             return self.get_best_public_playlist(playlist)
 
     def query_song(self, song, bonus):
-        """ Try to find a song.
+        """Try to find a song.
 
-            Searches Spotify for song and artist if provided.
+        Searches Spotify for song and artist if provided.
 
-            Arguments:
-                song (str): Song to search for
-                bonus (float): Any bonus to apply to the confidence
+        Arguments:
+            song (str): Song to search for
+            bonus (float): Any bonus to apply to the confidence
 
-            Returns: Tuple with confidence and data or NOTHING_FOUND
+        Returns: Tuple with confidence and data or NOTHING_FOUND
         """
         data = None
         by_word = ' {} '.format(self.translate('by'))
@@ -671,7 +668,7 @@ class SpotifySkill(CommonPlaySkill):
             tracks = [(best_confidence(d['name'], song), d)
                       for d in data['tracks']['items']]
             tracks.sort(key=lambda x: x[0])
-            tracks.reverse() # Place best matches first
+            tracks.reverse()  # Place best matches first
             # Find pretty similar tracks to the best match
             tracks = [t for t in tracks if t[0] > tracks[0][0] - 0.1]
             # Sort remaining tracks by popularity
@@ -685,7 +682,7 @@ class SpotifySkill(CommonPlaySkill):
             return NOTHING_FOUND
 
     def CPS_start(self, phrase, data):
-        """ Handler for common play framework start playback request. """
+        """Handler for common play framework start playback request."""
         try:
             if not self.spotify:
                 raise SpotifyNotAuthorizedError
@@ -737,7 +734,7 @@ class SpotifySkill(CommonPlaySkill):
             self.speak_dialog('PlaybackFailed', {'reason': str(e)})
 
     def create_intents(self):
-        # Create intents
+        """Setup the spotify intents."""
         intent = IntentBuilder('').require('Spotify').require('Search') \
                                   .require('For')
         self.register_intent(intent, self.search_spotify)
@@ -764,7 +761,7 @@ class SpotifySkill(CommonPlaySkill):
 
     @property
     def playlists(self):
-        """ Playlists, cached for 5 minutes """
+        """Playlists, cached for 5 minutes."""
         if not self.spotify:
             return []  # No connection, no playlists
         now = time.time()
@@ -778,7 +775,7 @@ class SpotifySkill(CommonPlaySkill):
 
     @property
     def devices(self):
-        """ Devices, cached for 60 seconds """
+        """Devices, cached for 60 seconds."""
         if not self.spotify:
             return []  # No connection, no devices
         now = time.time()
@@ -788,9 +785,9 @@ class SpotifySkill(CommonPlaySkill):
         return self.__device_list
 
     def device_by_name(self, name):
-        """ Get a Spotify devices from the API
+        """Get a Spotify devices from the API.
 
-        Args:
+        Arguments:
             name (str): The device name (fuzzy matches)
         Returns:
             (dict) None or the matching device's description
@@ -805,7 +802,7 @@ class SpotifySkill(CommonPlaySkill):
         return None
 
     def get_default_device(self):
-        """ Get preferred playback device """
+        """Get preferred playback device."""
         if self.spotify:
             # When there is an active Spotify device somewhere, use it
             if (self.devices and len(self.devices) > 0 and
@@ -849,7 +846,7 @@ class SpotifySkill(CommonPlaySkill):
         return None
 
     def get_best_user_playlist(self, playlist):
-        """ Get best playlist matching the provided name
+        """Get best playlist matching the provided name
 
         Arguments:
             playlist (str): Playlist name
@@ -876,12 +873,12 @@ class SpotifySkill(CommonPlaySkill):
         return NOTHING_FOUND
 
     def continue_current_playlist(self, dev):
-        """ Send the play command to the selected device. """
+        """Send the play command to the selected device."""
         time.sleep(2)
         self.spotify_play(dev['id'])
 
     def playback_prerequisits_ok(self):
-        """ Check that playback is possible, launch client if neccessary. """
+        """Check that playback is possible, launch client if neccessary."""
         if self.spotify is None:
             return False
 
@@ -896,7 +893,7 @@ class SpotifySkill(CommonPlaySkill):
         return True
 
     def spotify_play(self, dev_id, uris=None, context_uri=None):
-        """ Start spotify playback and log any exceptions. """
+        """Start spotify playback and log any exceptions."""
         try:
             self.log.info(u'spotify_play: {}'.format(dev_id))
             self.spotify.play(dev_id, uris, context_uri)
@@ -1167,7 +1164,7 @@ class SpotifySkill(CommonPlaySkill):
             self.speak_dialog('NothingPlaying')
 
     def handle_stop(self, message):
-        self.stop()
+        self.bus.emit(Message('mycroft.stop'))
 
     def do_stop(self):
         try:
