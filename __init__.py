@@ -172,7 +172,7 @@ class SpotifySkill(CommonPlaySkill):
         self.platform = enclosure_config.get('platform', 'unknown')
         self.DEFAULT_VOLUME = 80 if self.platform == 'mycroft_mark_1' else 100
         self._playlists = None
-        self._saved_tracks = None
+        self.saved_tracks = None
         self.regexes = {}
         self.last_played_type = None  # The last uri type that was started
         self.is_playing = False
@@ -790,7 +790,7 @@ class SpotifySkill(CommonPlaySkill):
         if not self.spotify:
             return []
         now = time.time()
-        if not self._saved_tracks or (now - self.__saved_tracks_fetched > 4 * 60 * 60):
+        if not self.saved_tracks or (now - self.__saved_tracks_fetched > 4 * 60 * 60):
             saved_tracks = []
             offset = 0
             while True:
@@ -802,7 +802,7 @@ class SpotifySkill(CommonPlaySkill):
                 if not batch['next']:
                     break
 
-            self._saved_tracks = saved_tracks
+            self.saved_tracks = saved_tracks
             self.__saved_tracks_fetched = now
 
     @property
