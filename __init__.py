@@ -787,8 +787,17 @@ class SpotifySkill(CommonPlaySkill):
             return []
         now = time.time()
         if not self._saved_tracks or (now - self.__saved_tracks_fetched > 5 * 60):
-            self._saved_tracks = {}
-            self._saved_tracks = self.spotify.current_user_saved_tracks().get('items', [])
+            self._saved_tracks = []
+            offset = 0
+            while True:
+                batch = self.spotify.current_user_saved_tracks(50, offset)
+                for item in batch.get('items', []):
+                    self._saved_tracks.append(item['track'])
+
+                offset += 50
+                if not batch['next']:
+                    break
+
             self.__saved_tracks_fetched = now
         return self._saved_tracks
 
