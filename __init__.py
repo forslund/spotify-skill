@@ -423,7 +423,7 @@ class SpotifySkill(CommonPlaySkill):
             self.log.info('Spotify confidence: {}'.format(confidence))
             self.log.info('              data: {}'.format(data))
 
-            if data.get('type') in ['album', 'artist', 'track', 'playlist']:
+            if data.get('type') in ['saved_tracks', 'album', 'artist', 'track', 'playlist']:
                 if spotify_specified:
                     # " play great song on spotify'
                     level = CPSMatchLevel.EXACT
@@ -963,13 +963,13 @@ class SpotifySkill(CommonPlaySkill):
         """
         try:
             if data_type == 'saved_tracks':
-                items = data['saved_tracks']['items']
+                items = data['items']
                 random.shuffle(items)
                 uris = []
                 for item in items:
-                    uris.append(item['uri'])
-                data = {'track': items[0]['name'],
-                        'artist': items[0]['artists'][0]['name']}
+                    uris.append(item['track']['uri'])
+                data = {'track': items[0]['track']['name'],
+                        'artist': items[0]['track']['artists'][0]['name']}
                 self.speak_dialog('ListeningToSavedSongs', data)
                 time.sleep(2)
                 self.spotify_play(dev['id'], uris=uris)
