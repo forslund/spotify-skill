@@ -172,6 +172,7 @@ class SpotifySkill(CommonPlaySkill):
         self.platform = enclosure_config.get('platform', 'unknown')
         self.DEFAULT_VOLUME = 80 if self.platform == 'mycroft_mark_1' else 100
         self._playlists = None
+        self._saved_tracks = None
         self.regexes = {}
         self.last_played_type = None  # The last uri type that was started
         self.is_playing = False
@@ -422,7 +423,7 @@ class SpotifySkill(CommonPlaySkill):
             self.log.info('Spotify confidence: {}'.format(confidence))
             self.log.info('              data: {}'.format(data))
 
-            if data.get('type') in ['album', 'artist', 'track', 'playlist']:
+            if data.get('type') in ['saved_tracks', 'album', 'artist', 'track', 'playlist']:
                 if spotify_specified:
                     # " play great song on spotify'
                     level = CPSMatchLevel.EXACT
@@ -468,7 +469,7 @@ class SpotifySkill(CommonPlaySkill):
         """
         Check if the phrase can be matched against a specific spotify request.
 
-        This includes asking for playlists, albums, artists or songs.
+        This includes asking for saved items, playlists, albums, artists or songs.
 
         Arguments:
             phrase (str): Text to match against
@@ -476,6 +477,12 @@ class SpotifySkill(CommonPlaySkill):
 
         Returns: Tuple with confidence and data or NOTHING_FOUND
         """
+        # Check if saved
+        match = re.match(self.translate_regex('saved_songs'), phrase)
+        if match:
+            return (1.0, {'data': self.saved_tracks,
+                          'type': 'saved_tracks'})
+
         # Check if playlist
         match = re.match(self.translate_regex('playlist'), phrase)
         if match:
@@ -774,6 +781,18 @@ class SpotifySkill(CommonPlaySkill):
         return self._playlists
 
     @property
+    def saved_tracks(self):
+        """Saved tracks, cached for 5 minutes."""
+        if not self.spotify:
+            return []
+        now = time.time()
+        if not self._saved_tracks or (now - self.__saved_tracks_fetched > 5 * 60):
+            self._saved_tracks = {}
+            self._saved_tracks = self.spotify.current_user_saved_tracks().get('items', [])
+            self.__saved_tracks_fetched = now
+        return self._saved_tracks
+
+    @property
     def devices(self):
         """Devices, cached for 60 seconds."""
         if not self.spotify:
@@ -937,13 +956,24 @@ class SpotifySkill(CommonPlaySkill):
         Args:
             data (dict):        Data returned by self.spotify.search
             data_type (str):    The type of data contained in the passed-in
-                                object. 'track', 'album', or 'genre' are
-                                currently supported.
+                                object. 'saved_tracks', 'track', 'album',
+                                or 'genre' are currently supported.
             genre_name (str):   If type is 'genre', also include the genre's
                                 name here, for output purposes. default None
         """
         try:
-            if data_type == 'track':
+            if data_type == 'saved_tracks':
+                items = data
+                random.shuffle(items)
+                uris = []
+                for item in items:
+                    uris.append(item['uri'])
+                data = {'track': items[0]['name'],
+                        'artist': items[0]['artists'][0]['name']}
+                self.speak_dialog('ListeningToSavedSongs', data)
+                time.sleep(2)
+                self.spotify_play(dev['id'], uris=uris)
+            elif data_type == 'track':
                 (song, artists, uri) = get_song_info(data)
                 self.speak_dialog('ListeningToSongBy',
                                   data={'tracks': song,
