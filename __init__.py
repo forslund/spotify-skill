@@ -976,9 +976,9 @@ class SpotifySkill(CommonPlaySkill):
                 random.shuffle(items)
                 uris = []
                 for item in items:
-                    uris.append(item['track']['uri'])
-                data = {'track': items[0]['track']['name'],
-                        'artist': items[0]['track']['artists'][0]['name']}
+                    uris.append(item['uri'])
+                data = {'track': items[0]['name'],
+                        'artist': items[0]['artists'][0]['name']}
                 self.speak_dialog('ListeningToSavedSongs', data)
                 time.sleep(2)
                 self.spotify_play(dev['id'], uris=uris)
