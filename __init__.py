@@ -172,7 +172,7 @@ class SpotifySkill(CommonPlaySkill):
         self.platform = enclosure_config.get('platform', 'unknown')
         self.DEFAULT_VOLUME = 80 if self.platform == 'mycroft_mark_1' else 100
         self._playlists = None
-        self._saved_tracks = None
+        self.saved_tracks = None
         self.regexes = {}
         self.last_played_type = None  # The last uri type that was started
         self.is_playing = False
@@ -259,6 +259,11 @@ class SpotifySkill(CommonPlaySkill):
                 if self.process:
                     self.stop_librespot()
                 self.launch_librespot()
+
+            # Refresh saved tracks
+            # We can't get this list when the user asks because it takes too long
+            # and causes mycroft-playback-control.mycroftai:PlayQueryTimeout
+            self.refresh_saved_tracks()
 
     def load_credentials(self):
         """Retrieve credentials from the backend and connect to Spotify."""
@@ -780,26 +785,25 @@ class SpotifySkill(CommonPlaySkill):
             self.__playlists_fetched = now
         return self._playlists
 
-    @property
-    def saved_tracks(self):
-        """Saved tracks, cached for 5 minutes."""
+    def refresh_saved_tracks(self):
+        """Saved tracks are cached for 4 hours."""
         if not self.spotify:
             return []
         now = time.time()
-        if not self._saved_tracks or (now - self.__saved_tracks_fetched > 5 * 60):
-            self._saved_tracks = []
+        if not self.saved_tracks or (now - self.__saved_tracks_fetched > 4 * 60 * 60):
+            saved_tracks = []
             offset = 0
             while True:
                 batch = self.spotify.current_user_saved_tracks(50, offset)
                 for item in batch.get('items', []):
-                    self._saved_tracks.append(item['track'])
+                    saved_tracks.append(item['track'])
 
                 offset += 50
                 if not batch['next']:
                     break
 
+            self.saved_tracks = saved_tracks
             self.__saved_tracks_fetched = now
-        return self._saved_tracks
 
     @property
     def devices(self):
