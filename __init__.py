@@ -795,7 +795,7 @@ class SpotifySkill(CommonPlaySkill):
                     self._saved_tracks.append(item['track'])
 
                 offset += 50
-                if not batch.next:
+                if not batch['next']:
                     break
 
             self.__saved_tracks_fetched = now
