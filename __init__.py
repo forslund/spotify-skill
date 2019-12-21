@@ -480,7 +480,7 @@ class SpotifySkill(CommonPlaySkill):
         # Check if saved
         match = re.match(self.translate_regex('saved_songs'), phrase)
         if match:
-            return (1.0, {'items': self.saved_tracks,
+            return (1.0, {'data': self.saved_tracks,
                           'type': 'saved_tracks'})
 
         # Check if playlist
@@ -963,7 +963,7 @@ class SpotifySkill(CommonPlaySkill):
         """
         try:
             if data_type == 'saved_tracks':
-                items = data['items']
+                items = data
                 random.shuffle(items)
                 uris = []
                 for item in items:
