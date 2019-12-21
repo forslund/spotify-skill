@@ -172,7 +172,7 @@ class SpotifySkill(CommonPlaySkill):
         self.platform = enclosure_config.get('platform', 'unknown')
         self.DEFAULT_VOLUME = 80 if self.platform == 'mycroft_mark_1' else 100
         self._playlists = None
-        self.saved_tracks = []
+        self._saved_tracks = None
         self.regexes = {}
         self.last_played_type = None  # The last uri type that was started
         self.is_playing = False
@@ -239,15 +239,9 @@ class SpotifySkill(CommonPlaySkill):
         # Retry in 5 minutes
         self.schedule_repeating_event(self.on_websettings_changed,
                                       None, 5 * 60, name='SpotifyLogin')
-        # Retrieve saved tracks every 4 hours
-        # We can't retrieve them when the user asks for it because it may take too long
-        # and we'll get a mycroft-playback-control.mycroftai:PlayQueryTimeout
-        self.schedule_repeating_event(self.refresh_saved_tracks,
-                                      None, 4 * 60 * 60)
         if self.platform in MANAGED_PLATFORMS:
             update_librespot()
         self.on_websettings_changed()
-        self.refresh_saved_tracks()
 
     def on_websettings_changed(self):
         # Only attempt to load credentials if the username has been set
@@ -265,6 +259,11 @@ class SpotifySkill(CommonPlaySkill):
                 if self.process:
                     self.stop_librespot()
                 self.launch_librespot()
+
+            # Refresh saved tracks
+            # We can't get this list when the user asks because it takes too long
+            # and causes mycroft-playback-control.mycroftai:PlayQueryTimeout
+            self.refresh_saved_tracks()
 
     def load_credentials(self):
         """Retrieve credentials from the backend and connect to Spotify."""
@@ -786,20 +785,25 @@ class SpotifySkill(CommonPlaySkill):
             self.__playlists_fetched = now
         return self._playlists
 
-    @property
     def refresh_saved_tracks(self):
-        saved_tracks = []
-        offset = 0
-        while True:
-            batch = self.spotify.current_user_saved_tracks(50, offset)
-            for item in batch.get('items', []):
-                saved_tracks.append(item['track'])
+        """Saved tracks are cached for 4 hours."""
+        if not self.spotify:
+            return []
+        now = time.time()
+        if not self._saved_tracks or (now - self.__saved_tracks_fetched > 4 * 60 * 60):
+            saved_tracks = []
+            offset = 0
+            while True:
+                batch = self.spotify.current_user_saved_tracks(50, offset)
+                for item in batch.get('items', []):
+                    saved_tracks.append(item['track'])
 
-            offset += 50
-            if not batch['next']:
-                break
+                offset += 50
+                if not batch['next']:
+                    break
 
-        self.saved_tracks = saved_tracks
+            self._saved_tracks = saved_tracks
+            self.__saved_tracks_fetched = now
 
     @property
     def devices(self):
