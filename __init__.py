@@ -172,7 +172,7 @@ class SpotifySkill(CommonPlaySkill):
         self.platform = enclosure_config.get('platform', 'unknown')
         self.DEFAULT_VOLUME = 80 if self.platform == 'mycroft_mark_1' else 100
         self._playlists = None
-        self._saved_tracks = None
+        self.saved_tracks = []
         self.regexes = {}
         self.last_played_type = None  # The last uri type that was started
         self.is_playing = False
@@ -239,9 +239,15 @@ class SpotifySkill(CommonPlaySkill):
         # Retry in 5 minutes
         self.schedule_repeating_event(self.on_websettings_changed,
                                       None, 5 * 60, name='SpotifyLogin')
+        # Retrieve saved tracks every 4 hours
+        # We can't retrieve them when the user asks for it because it may take too long
+        # and we'll get a mycroft-playback-control.mycroftai:PlayQueryTimeout
+        self.schedule_repeating_event(self.refresh_saved_tracks,
+                                      None, 4 * 60 * 60)
         if self.platform in MANAGED_PLATFORMS:
             update_librespot()
         self.on_websettings_changed()
+        self.refresh_saved_tracks()
 
     def on_websettings_changed(self):
         # Only attempt to load credentials if the username has been set
@@ -781,25 +787,19 @@ class SpotifySkill(CommonPlaySkill):
         return self._playlists
 
     @property
-    def saved_tracks(self):
-        """Saved tracks, cached for 5 minutes."""
-        if not self.spotify:
-            return []
-        now = time.time()
-        if not self._saved_tracks or (now - self.__saved_tracks_fetched > 5 * 60):
-            self._saved_tracks = []
-            offset = 0
-            while True:
-                batch = self.spotify.current_user_saved_tracks(50, offset)
-                for item in batch.get('items', []):
-                    self._saved_tracks.append(item['track'])
+    def refresh_saved_tracks(self):
+        saved_tracks = []
+        offset = 0
+        while True:
+            batch = self.spotify.current_user_saved_tracks(50, offset)
+            for item in batch.get('items', []):
+                saved_tracks.append(item['track'])
 
-                offset += 50
-                if not batch['next']:
-                    break
+            offset += 50
+            if not batch['next']:
+                break
 
-            self.__saved_tracks_fetched = now
-        return self._saved_tracks
+        self.saved_tracks = saved_tracks
 
     @property
     def devices(self):
