@@ -791,7 +791,7 @@ class SpotifySkill(CommonPlaySkill):
             offset = 0
             while True:
                 batch = self.spotify.current_user_saved_tracks(50, offset)
-                for item in batch.get('items', [])
+                for item in batch.get('items', []):
                     self._saved_tracks.append(item['track'])
 
                 offset += 50
