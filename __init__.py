@@ -796,7 +796,7 @@ class SpotifySkill(CommonPlaySkill):
 
         # Grab count random tracks
         for i in range(0, count):
-            songs.append(self.spotify.current_user_saved_tracks(1, random.randint(0, total)).get('items', [])
+            songs.append(self.spotify.current_user_saved_tracks(1, random.randint(0, total)).get('items', []))
 
         return songs
 
