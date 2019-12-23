@@ -172,7 +172,7 @@ class SpotifySkill(CommonPlaySkill):
         self.platform = enclosure_config.get('platform', 'unknown')
         self.DEFAULT_VOLUME = 80 if self.platform == 'mycroft_mark_1' else 100
         self._playlists = None
-        self.saved_tracks = None
+        self.saved_tracks = []
         self.regexes = {}
         self.last_played_type = None  # The last uri type that was started
         self.is_playing = False
