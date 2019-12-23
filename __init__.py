@@ -486,6 +486,7 @@ class SpotifySkill(CommonPlaySkill):
         match = re.match(self.translate_regex('saved_songs'), phrase)
         if match:
             return (1.0, {'data': self.saved_tracks,
+                          'name': None,
                           'type': 'saved_tracks'})
 
         # Check if playlist
