@@ -977,12 +977,11 @@ class SpotifySkill(CommonPlaySkill):
             if data_type == 'saved_tracks':
                 items = data
                 uris = []
-                for item in items:
-                    uris.append(item['uri'])
                 data = {'track': items[0]['name'],
                         'artist': items[0]['artists'][0]['name']}
                 self.speak_dialog('ListeningToSavedSongs', data)
-                time.sleep(2)
+                for item in items:
+                    uris.append(item['uri'])
                 self.spotify_play(dev['id'], uris=uris)
             elif data_type == 'track':
                 (song, artists, uri) = get_song_info(data)
