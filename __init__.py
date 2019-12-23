@@ -485,7 +485,7 @@ class SpotifySkill(CommonPlaySkill):
         # Check if saved
         match = re.match(self.translate_regex('saved_songs'), phrase)
         if match and self.saved_tracks:
-            return (1.0, {'data': self.saved_tracks,
+            return (1.0, {'data': None,
                           'type': 'saved_tracks'})
 
         # Check if playlist
@@ -975,13 +975,13 @@ class SpotifySkill(CommonPlaySkill):
         """
         try:
             if data_type == 'saved_tracks':
-                items = data
+                # Grab 200 random songs
+                # Spotify doesn't like it when we send thousands of songs
+                items = random.sample(self.saved_tracks, 200)
                 uris = []
                 for item in items:
                     uris.append(item['uri'])
-                data = {'track': items[0]['name'],
-                        'artist': items[0]['artists'][0]['name']}
-                self.speak_dialog('ListeningToSavedSongs', data)
+                self.speak_dialog('ListeningToSavedSongs')
                 time.sleep(2)
                 self.spotify_play(dev['id'], uris=uris)
             elif data_type == 'track':
