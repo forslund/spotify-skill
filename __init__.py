@@ -977,9 +977,9 @@ class SpotifySkill(CommonPlaySkill):
         try:
             if data_type == 'saved_tracks':
                 items = data
-                # Grab up to 50 random songs
+                # Grab up to 100 random songs
                 # Prevents mycroft-playback-control.mycroftai:PlayQueryTimeout
-                random.sample(items, min(50, len(items)))
+                random.sample(items, min(100, len(items)))
                 uris = []
                 for item in items:
                     uris.append(item['uri'])
