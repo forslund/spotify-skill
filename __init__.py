@@ -172,7 +172,6 @@ class SpotifySkill(CommonPlaySkill):
         self.platform = enclosure_config.get('platform', 'unknown')
         self.DEFAULT_VOLUME = 80 if self.platform == 'mycroft_mark_1' else 100
         self._playlists = None
-        self.saved_tracks = None
         self.regexes = {}
         self.last_played_type = None  # The last uri type that was started
         self.is_playing = False
@@ -259,11 +258,6 @@ class SpotifySkill(CommonPlaySkill):
                 if self.process:
                     self.stop_librespot()
                 self.launch_librespot()
-
-            # Refresh saved tracks
-            # We can't get this list when the user asks because it takes too long
-            # and causes mycroft-playback-control.mycroftai:PlayQueryTimeout
-            self.refresh_saved_tracks()
 
     def load_credentials(self):
         """Retrieve credentials from the backend and connect to Spotify."""
@@ -485,7 +479,7 @@ class SpotifySkill(CommonPlaySkill):
         # Check if saved
         match = re.match(self.translate_regex('saved_songs'), phrase)
         if match:
-            return (1.0, {'data': self.saved_tracks,
+            return (1.0, {'data': self.saved_tracks(),
                           'type': 'saved_tracks'})
 
         # Check if playlist
@@ -785,25 +779,26 @@ class SpotifySkill(CommonPlaySkill):
             self.__playlists_fetched = now
         return self._playlists
 
-    def refresh_saved_tracks(self):
-        """Saved tracks are cached for 4 hours."""
+    def saved_tracks(self, count=100):
+        """Retrieve count number of saved tracks."""
         if not self.spotify:
             return []
-        now = time.time()
-        if not self.saved_tracks or (now - self.__saved_tracks_fetched > 4 * 60 * 60):
-            saved_tracks = []
-            offset = 0
-            while True:
-                batch = self.spotify.current_user_saved_tracks(50, offset)
-                for item in batch.get('items', []):
-                    saved_tracks.append(item['track'])
 
-                offset += 50
-                if not batch['next']:
-                    break
+        songs = []
 
-            self.saved_tracks = saved_tracks
-            self.__saved_tracks_fetched = now
+        # Get the amount of tracks
+        batch = self.spotify.current_user_saved_tracks(1, 0)
+        total = batch["total"]
+
+        # Get less tracks if the user has less than count
+        if total < count:
+            count = total
+
+        # Grab count random tracks
+        for i in range(0, count):
+            songs.append(self.spotify.current_user_saved_tracks(1, random.randint(0, total)).get('items', []))
+
+        return songs
 
     @property
     def devices(self):
@@ -977,10 +972,6 @@ class SpotifySkill(CommonPlaySkill):
         try:
             if data_type == 'saved_tracks':
                 items = data
-                # Grab up to 100 random songs
-                # Prevents mycroft-playback-control.mycroftai:PlayQueryTimeout
-                random.choices(items, k=min(100, len(items)))
-                uris = []
                 for item in items:
                     uris.append(item['uri'])
                 data = {'track': items[0]['name'],
