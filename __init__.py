@@ -172,7 +172,7 @@ class SpotifySkill(CommonPlaySkill):
         self.platform = enclosure_config.get('platform', 'unknown')
         self.DEFAULT_VOLUME = 80 if self.platform == 'mycroft_mark_1' else 100
         self._playlists = None
-        self.saved_tracks = []
+        self.saved_tracks = None
         self.regexes = {}
         self.last_played_type = None  # The last uri type that was started
         self.is_playing = False
@@ -484,9 +484,8 @@ class SpotifySkill(CommonPlaySkill):
         """
         # Check if saved
         match = re.match(self.translate_regex('saved_songs'), phrase)
-        if match:
+        if match and self.saved_tracks:
             return (1.0, {'data': self.saved_tracks,
-                          'name': None,
                           'type': 'saved_tracks'})
 
         # Check if playlist
@@ -978,11 +977,12 @@ class SpotifySkill(CommonPlaySkill):
             if data_type == 'saved_tracks':
                 items = data
                 uris = []
+                for item in items:
+                    uris.append(item['uri'])
                 data = {'track': items[0]['name'],
                         'artist': items[0]['artists'][0]['name']}
                 self.speak_dialog('ListeningToSavedSongs', data)
-                for item in items:
-                    uris.append(item['uri'])
+                time.sleep(2)
                 self.spotify_play(dev['id'], uris=uris)
             elif data_type == 'track':
                 (song, artists, uri) = get_song_info(data)
