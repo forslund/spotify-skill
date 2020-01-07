@@ -172,6 +172,7 @@ class SpotifySkill(CommonPlaySkill):
         self.platform = enclosure_config.get('platform', 'unknown')
         self.DEFAULT_VOLUME = 80 if self.platform == 'mycroft_mark_1' else 100
         self._playlists = None
+        self.saved_tracks = None
         self.regexes = {}
         self.last_played_type = None  # The last uri type that was started
         self.is_playing = False
@@ -258,6 +259,11 @@ class SpotifySkill(CommonPlaySkill):
                 if self.process:
                     self.stop_librespot()
                 self.launch_librespot()
+
+            # Refresh saved tracks
+            # We can't get this list when the user asks because it takes too long
+            # and causes mycroft-playback-control.mycroftai:PlayQueryTimeout
+            self.refresh_saved_tracks()
 
     def load_credentials(self):
         """Retrieve credentials from the backend and connect to Spotify."""
@@ -422,7 +428,7 @@ class SpotifySkill(CommonPlaySkill):
             self.log.info('Spotify confidence: {}'.format(confidence))
             self.log.info('              data: {}'.format(data))
 
-            if data.get('type') in ['album', 'artist', 'track', 'playlist']:
+            if data.get('type') in ['saved_tracks', 'album', 'artist', 'track', 'playlist']:
                 if spotify_specified:
                     # " play great song on spotify'
                     level = CPSMatchLevel.EXACT
@@ -468,7 +474,7 @@ class SpotifySkill(CommonPlaySkill):
         """
         Check if the phrase can be matched against a specific spotify request.
 
-        This includes asking for playlists, albums, artists or songs.
+        This includes asking for saved items, playlists, albums, artists or songs.
 
         Arguments:
             phrase (str): Text to match against
@@ -476,6 +482,12 @@ class SpotifySkill(CommonPlaySkill):
 
         Returns: Tuple with confidence and data or NOTHING_FOUND
         """
+        # Check if saved
+        match = re.match(self.translate_regex('saved_songs'), phrase)
+        if match and self.saved_tracks:
+            return (1.0, {'data': None,
+                          'type': 'saved_tracks'})
+
         # Check if playlist
         match = re.match(self.translate_regex('playlist'), phrase)
         if match:
@@ -773,6 +785,25 @@ class SpotifySkill(CommonPlaySkill):
             self.__playlists_fetched = now
         return self._playlists
 
+    def refresh_saved_tracks(self):
+        """Saved tracks are cached for 4 hours."""
+        if not self.spotify:
+            return []
+        now = time.time()
+        if not self.saved_tracks or (now - self.__saved_tracks_fetched > 4 * 60 * 60):
+            saved_tracks = []
+            offset = 0
+            while True:
+                batch = self.spotify.current_user_saved_tracks(50, offset)
+                for item in batch.get('items', []):
+                    saved_tracks.append(item['track'])
+                offset += 50
+                if not batch['next']:
+                    break
+
+            self.saved_tracks = saved_tracks
+            self.__saved_tracks_fetched = now
+
     @property
     def devices(self):
         """Devices, cached for 60 seconds."""
@@ -937,13 +968,23 @@ class SpotifySkill(CommonPlaySkill):
         Args:
             data (dict):        Data returned by self.spotify.search
             data_type (str):    The type of data contained in the passed-in
-                                object. 'track', 'album', or 'genre' are
-                                currently supported.
+                                object. 'saved_tracks', 'track', 'album',
+                                or 'genre' are currently supported.
             genre_name (str):   If type is 'genre', also include the genre's
                                 name here, for output purposes. default None
         """
         try:
-            if data_type == 'track':
+            if data_type == 'saved_tracks':
+                # Grab 200 random songs
+                # Spotify doesn't like it when we send thousands of songs
+                items = random.sample(self.saved_tracks, 200)
+                uris = []
+                for item in items:
+                    uris.append(item['uri'])
+                self.speak_dialog('ListeningToSavedSongs')
+                time.sleep(2)
+                self.spotify_play(dev['id'], uris=uris)
+            elif data_type == 'track':
                 (song, artists, uri) = get_song_info(data)
                 self.speak_dialog('ListeningToSongBy',
                                   data={'tracks': song,
