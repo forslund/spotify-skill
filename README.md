@@ -34,6 +34,7 @@ _NOTE: You MUST have a Premium Spotify account to use this **Skill**. It will NO
 * "Search Spotify for Hello Nasty"
 * "Play something by Coventant"
 * "Play the album Hello Nasty on Spotify"
+* "Play my liked songs"
 
 ## Commands
 
