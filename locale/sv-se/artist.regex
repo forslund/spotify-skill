@@ -1,0 +1,1 @@
+(artisten|gruppen|bandet|(något|någonting|grejer|musik|sång) (av|från)) (?P<artist>.+)
