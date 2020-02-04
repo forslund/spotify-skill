@@ -1,0 +1,1 @@
+(l'artiste|le groupe|(trucs|musique|chanson) (par|de)) (?P<artist>.+)
