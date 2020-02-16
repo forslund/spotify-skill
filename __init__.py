@@ -235,7 +235,7 @@ class SpotifySkill(CommonPlaySkill):
         self.add_event('mycroft.audio.service.pause', self.pause)
         self.add_event('mycroft.audio.service.resume', self.resume)
         # Check and then monitor for credential changes
-        self.settings.set_changed_callback(self.on_websettings_changed)
+        self.settings_change_callback = self.on_websettings_changed
         # Retry in 5 minutes
         self.schedule_repeating_event(self.on_websettings_changed,
                                       None, 5 * 60, name='SpotifyLogin')
