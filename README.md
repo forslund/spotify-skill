@@ -31,8 +31,8 @@ _NOTE: You MUST have a Premium Spotify account to use this **Skill**. It will NO
 ## Examples 
 * "What Spotify devices are available?"
 * "Play discover weekly"
-* "Search Spotify for Hello Nasty"
-* "Play something by Coventant"
+* "Play Hello Nasty on Spotify"
+* "Play something by Covenant"
 * "Play the album Hello Nasty on Spotify"
 * "Play my liked songs"
 
@@ -40,9 +40,9 @@ _NOTE: You MUST have a Premium Spotify account to use this **Skill**. It will NO
 
 ### Playing music:
 
-* "Play something by Coventant" - Will queue songs by Coventant
+* "Play something by Covenant" - Will queue songs by Covenant
 * "Play Background" - Will play either your playlist named "Background" or the first song result
-* "Search Spotify for Hello Nasty" - Will play first song result matching the query
+* "Play Hello Nasty on Spotify" - Will play first song result matching the query
 
 ### Controls:
 * "Play the next/previous song" - Will skip the track either forward or backwards, respectively
