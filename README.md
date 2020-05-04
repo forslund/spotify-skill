@@ -1,8 +1,8 @@
-# <img src='https://rawcdn.githack.com/forslund/spotify-skill/05c19c0fba8a4af150c6eb8cf2e955d59ac83d15/Spotify_Icon.png' card_color='#40db60' width='50' height='50' style='vertical-align:bottom'/> Spotify
+# <img src='https://rawcdn.githack.com/forslund/spotify-skill/05c19c0fba8a4af150c6eb8cf2e955d59ac83d15/Spotify_Icon.png' card_color='#40db60' width='50' height='50' style='vertical-align:bottom'/> Play Spotify
 Listen to music from your Spotify Premium music account
 
 ## About
-Stream your favorite music from the popular Spotify music service.  Spotify
+Stream your favorite music from the popular Spotify music service. Spotify
 Premium users can search and play tracks from their own playlists or the huge
 Spotify music library.
 
