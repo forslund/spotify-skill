@@ -78,6 +78,7 @@ class SpotifyConnect(spotipy.Spotify):
             return devices
         except Exception as e:
             LOG.error(e)
+            return []
 
     @refresh_auth
     def status(self):
@@ -219,6 +220,18 @@ class SpotifyConnect(spotipy.Spotify):
             self._put(uri)
         except Exception as e:
             LOG.error(e)
+
+
+def get_show_info(data):
+    """ Get podcast info from data object.
+    Arguments:
+        data: data structure from spotify
+    Returns: tuple with (name, uri)
+    """
+    from pprint import pprint
+    pprint(data['shows']['items'][0])
+    return (data['shows']['items'][0]['name'],
+            data['shows']['items'][0]['uri'])
 
 
 def get_album_info(data):

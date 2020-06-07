@@ -37,7 +37,8 @@ from socket import gethostname
 
 import spotipy
 from .spotify import (MycroftSpotifyCredentials, SpotifyConnect,
-                      get_album_info, get_artist_info, get_song_info)
+                      get_album_info, get_artist_info, get_song_info,
+                      get_show_info)
 import random
 
 from mycroft.skills.common_play_skill import CommonPlaySkill, CPSMatchLevel
@@ -261,8 +262,9 @@ class SpotifySkill(CommonPlaySkill):
                 self.launch_librespot()
 
             # Refresh saved tracks
-            # We can't get this list when the user asks because it takes too long
-            # and causes mycroft-playback-control.mycroftai:PlayQueryTimeout
+            # We can't get this list when the user asks because it takes
+            # too long and causes
+            # mycroft-playback-control.mycroftai:PlayQueryTimeout
             self.refresh_saved_tracks()
 
     def load_credentials(self):
@@ -428,7 +430,8 @@ class SpotifySkill(CommonPlaySkill):
             self.log.info('Spotify confidence: {}'.format(confidence))
             self.log.info('              data: {}'.format(data))
 
-            if data.get('type') in ['saved_tracks', 'album', 'artist', 'track', 'playlist']:
+            if data.get('type') in ['saved_tracks', 'album', 'artist',
+                                    'track', 'playlist', 'show']:
                 if spotify_specified:
                     # " play great song on spotify'
                     level = CPSMatchLevel.EXACT
@@ -474,7 +477,8 @@ class SpotifySkill(CommonPlaySkill):
         """
         Check if the phrase can be matched against a specific spotify request.
 
-        This includes asking for saved items, playlists, albums, artists or songs.
+        This includes asking for saved items, playlists, albums, podcasts,
+        artists or songs.
 
         Arguments:
             phrase (str): Text to match against
@@ -509,6 +513,12 @@ class SpotifySkill(CommonPlaySkill):
         if match:
             song = match.groupdict()['track']
             return self.query_song(song, bonus)
+
+        # Check if podcast
+        match = re.match(self.translate_regex('podcast'), phrase)
+        if match:
+            return self.query_show(match.groupdict()['podcast'])
+
         return NOTHING_FOUND
 
     def generic_query(self, phrase, bonus):
@@ -655,6 +665,23 @@ class SpotifySkill(CommonPlaySkill):
                            'type': 'playlist'})
         else:
             return self.get_best_public_playlist(playlist)
+
+    def query_show(self, podcast):
+        """Try to find a podcast.
+
+        First searches the users playlists, then tries to find a public
+        one.
+
+        Arguments:
+            podcast (str): Playlist to search for
+
+        Returns: Tuple with confidence and data or NOTHING_FOUND
+        """
+        data = self.spotify.search(podcast, type='show')
+        if data and data['shows']['items']:
+            best = data['shows']['items'][0]['name'].lower()
+            confidence = best_confidence(best, podcast)
+            return (confidence, {'data': data, 'type': 'show'})
 
     def query_song(self, song, bonus):
         """Try to find a song.
@@ -1015,6 +1042,11 @@ class SpotifySkill(CommonPlaySkill):
                 self.speak_dialog('ListeningToGenre', data)
                 time.sleep(2)
                 self.spotify_play(dev['id'], uris=uris)
+            elif data_type == 'show':
+                (show, uri) = get_show_info(data)
+                self.speak_dialog('ListeningToPodcast', data={'show': show})
+                time.sleep(2)
+                self.spotify_play(dev['id'], context_uri=uri)
             else:
                 self.log.error('wrong data_type')
                 raise ValueError("Invalid type")
