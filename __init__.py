@@ -397,15 +397,6 @@ class SpotifySkill(CommonPlaySkill):
             self.mouth_text = text
             self.enclosure.mouth_text(text)
 
-    def CPS_send_status(self, artist='', track='', image=''):
-        data = {'skill': self.name,
-                'artist': artist,
-                'track': track,
-                'image': image,
-                'status': None  # TODO Add status system
-                }
-        self.bus.emit(Message('play:status', data))
-
     def CPS_match_query_phrase(self, phrase):
         """Handler for common play framework Query."""
         # Not ready to play
