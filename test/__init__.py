@@ -3,7 +3,7 @@ from os.path import dirname, join
 
 from test.integrationtests.skills.skill_tester import SkillTest
 
-import mock
+import unittest.mock as mock
 
 
 def load_mock_data(filename):
