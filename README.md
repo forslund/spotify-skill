@@ -1,4 +1,7 @@
 # <img src='https://rawcdn.githack.com/forslund/spotify-skill/05c19c0fba8a4af150c6eb8cf2e955d59ac83d15/Spotify_Icon.png' card_color='#40db60' width='50' height='50' style='vertical-align:bottom'/> Play Spotify
+
+**Spotify has disabled my API access for the skill, it was violating their Terms of Service by enabling voice control. I must have missed this back in 2017 when I created the skill.**
+
 Listen to music from your Spotify Premium music account
 
 ## About
