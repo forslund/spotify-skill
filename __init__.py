@@ -247,6 +247,7 @@ class SpotifySkill(CommonPlaySkill):
     def on_websettings_changed(self):
         # Only attempt to load credentials if the username has been set
         # will limit the accesses to the api.
+        return
         if not self.spotify and self.settings.get('user', None):
             try:
                 self.load_credentials()
