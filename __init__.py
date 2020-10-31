@@ -409,7 +409,8 @@ class SpotifySkill(CommonPlaySkill):
 
         spotify_specified = 'spotify' in phrase
         bonus = 0.1 if spotify_specified else 0.0
-        phrase = re.sub(self.translate_regex('on_spotify'), '', phrase)
+        phrase = re.sub(self.translate_regex('on_spotify'), '', phrase,
+                        re.IGNORECASE)
 
         confidence, data = self.continue_playback(phrase, bonus)
         if not data:
@@ -478,35 +479,41 @@ class SpotifySkill(CommonPlaySkill):
         Returns: Tuple with confidence and data or NOTHING_FOUND
         """
         # Check if saved
-        match = re.match(self.translate_regex('saved_songs'), phrase)
+        match = re.match(self.translate_regex('saved_songs'), phrase,
+                         re.IGNORECASE)
         if match and self.saved_tracks:
             return (1.0, {'data': None,
                           'type': 'saved_tracks'})
 
         # Check if playlist
-        match = re.match(self.translate_regex('playlist'), phrase)
+        match = re.match(self.translate_regex('playlist'), phrase,
+                         re.IGNORECASE)
         if match:
             return self.query_playlist(match.groupdict()['playlist'])
 
         # Check album
-        match = re.match(self.translate_regex('album'), phrase)
+        match = re.match(self.translate_regex('album'), phrase,
+                         re.IGNORECASE)
         if match:
             bonus += 0.1
             album = match.groupdict()['album']
             return self.query_album(album, bonus)
 
         # Check artist
-        match = re.match(self.translate_regex('artist'), phrase)
+        match = re.match(self.translate_regex('artist'), phrase,
+                         re.IGNORECASE)
         if match:
             artist = match.groupdict()['artist']
             return self.query_artist(artist, bonus)
-        match = re.match(self.translate_regex('song'), phrase)
+        match = re.match(self.translate_regex('song'), phrase,
+                         re.IGNORECASE)
         if match:
             song = match.groupdict()['track']
             return self.query_song(song, bonus)
 
         # Check if podcast
-        match = re.match(self.translate_regex('podcast'), phrase)
+        match = re.match(self.translate_regex('podcast'), phrase,
+                         re.IGNORECASE)
         if match:
             return self.query_show(match.groupdict()['podcast'])
 
