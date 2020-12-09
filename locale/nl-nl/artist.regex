@@ -1,1 +1,1 @@
-(de artiest|de groep|de band|iets van) (?P<artist>.+)
+(de artiest|de groep|de band| (iets|alles|spullen|muziek|liedjes) (door|van)) (?P<artist>.+)
