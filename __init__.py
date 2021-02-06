@@ -851,7 +851,7 @@ class SpotifySkill(CommonPlaySkill):
         devices = self.devices
         if devices and len(devices) > 0:
             # Otherwise get a device with the selected name
-            devices_by_name = {d['name']: d for d in devices}
+            devices_by_name = {d['name'].lower(): d for d in devices}
             key, confidence = match_one(name, list(devices_by_name.keys()))
             if confidence > 0.5:
                 return devices_by_name[key]
