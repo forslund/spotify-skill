@@ -36,10 +36,9 @@ import signal
 from socket import gethostname
 
 import spotipy
-from spotipy.oauth2 import SpotifyOAuth
 from .spotify import (MycroftSpotifyCredentials, SpotifyConnect,
                       get_album_info, get_artist_info, get_song_info,
-                      get_show_info)
+                      get_show_info, load_local_credentials)
 import random
 
 from mycroft.skills.common_play_skill import CommonPlaySkill, CPSMatchLevel
@@ -47,8 +46,6 @@ from mycroft.skills.common_play_skill import CommonPlaySkill, CPSMatchLevel
 from enum import Enum
 
 
-SCOPE = ('user-library-read streaming playlist-read-private '
-         'user-top-read user-read-playback-state')
 class DeviceType(Enum):
     MYCROFT = 1
     DEFAULT = 2
@@ -272,10 +269,7 @@ class SpotifySkill(CommonPlaySkill):
 
     def load_local_creds(self):
         try:
-            creds = SpotifyOAuth(
-                        username = self.settings['user'],
-                        redirect_uri='https://localhost:8888',
-                        scope=SCOPE)
+            creds = load_local_credentials(self.settings['user'])
             spotify = SpotifyConnect(client_credentials_manager=creds)
         except Exception:
             self.log.exception('Couldn\'t fetch credentials')
@@ -292,7 +286,14 @@ class SpotifySkill(CommonPlaySkill):
         return spotify
 
     def load_credentials(self):
-        """Retrieve credentials from the backend and connect to Spotify."""
+        """Retrieve credentials and connect to spotify.
+
+        This will load local credentials if available otherwise fetching
+        remote settings from mycroft backend will be attempted.
+
+        NOTE: the remote fetching is only a preparation for the future and
+        will always fail at the moment.
+        """
         self.spotify = self.load_local_creds() or self.load_remote_creds()
         if self.spotify:
             # Spotfy connection worked, prepare for usage

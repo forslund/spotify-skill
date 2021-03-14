@@ -2,6 +2,9 @@
 
 **Spotify has disabled my API access for the skill, it was violating their Terms of Service by enabling voice control. I must have missed this back in 2017 when I created the skill.**
 
+To use this skill currently you will need to create your own "application using
+https://developer.spotify.com". See instructions under the heading "Personal access token"
+.
 Listen to music from your Spotify Premium music account
 
 ## About
@@ -39,13 +42,19 @@ The exception to this is the Mark-1 which is shipped with a spotify player libra
 This Skill uses two different methods of authentication. Both need to be filled in correctly for the **Skill** to function correctly.
 
 #### API connection to your Spotify account
-After installing `mycroft-spotify`, in your [Skill
-settings for Spotify](https://home.mycroft.ai/#/skill) in home.mycroft.ai you will see settings for the Spotify Skill. You will see a username and password field and a 'Connect' button. Ignore the username and password field for now, and click the 'Connect' button. You will be prompted to log in to Spotify, and to authorize Mycroft AI to use your Spotify account using OAuth. This allows Mycroft access to your account details such as Playlists.
+After installing `mycroft-spotify`, from the mycroft-core folder run the auth.py script in the mycroft-spotify folder
+
+```
+source venv-activate-sh
+python skills/mycroft-spotify/auth.py
+```
+
+The script will try to guide you through connecting a developer account to the skill and store the credentials locally.
 
 #### Username and password to authenticate a Mycroft device
 In addition to account details, Mycroft needs to be authorized as a **device** for Spotify. To do this, we use your username and password for Spotify. These must be entered as well, or you will receive an error message like:
 
-`I couldn't find any Spot-ify devices.  This skill requires a Spotify Premium account to work properly.`
+`I couldn't find any Spotify devices.  This skill requires a Spotify Premium account to work properly.`
 
 when you try to use the **Skill** on a Mycroft device.
 

@@ -1,10 +1,16 @@
+import json
+import os
+from os.path import join, exists
+from shutil import move
 import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
+from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth
 from requests import HTTPError
 import time
+from xdg import BaseDirectory
 
 from mycroft.api import DeviceApi
 from mycroft.util.log import LOG
+
 
 def get_token(dev_cred):
     """ Get token with a single retry.
@@ -55,6 +61,35 @@ def refresh_auth(func):
             else:
                 raise
     return wrapper
+
+
+def load_local_credentials(user):
+    scope = ('user-library-read streaming playlist-read-private '
+             'user-top-read user-read-playback-state')
+    auth_dir = BaseDirectory.save_config_path('spotipy')
+
+    if not exists(auth_dir):
+        os.mkdir(auth_dir)
+
+    token_cache = join(auth_dir, 'token')
+
+    # Move old creds to config path
+    old_cache_file = '.cache-{}'.format(user)
+    if not exists(token_cache) and exists(old_cache_file):
+        move(old_cache_file, token_cache)
+
+    # Load stored oauth credentials if exists
+    auth_cache = join(auth_dir, 'auth')
+    if exists(auth_cache):
+        with open(auth_cache) as f:
+            auth = json.load(f)
+        os.environ['SPOTIPY_CLIENT_ID'] = auth['client_id']
+        os.environ['SPOTIPY_CLIENT_SECRET'] = auth['client_secret']
+
+    return SpotifyOAuth(username=user,
+                        redirect_uri='https://localhost:8888',
+                        scope=scope,
+                        cache_path=token_cache)
 
 
 class SpotifyConnect(spotipy.Spotify):
