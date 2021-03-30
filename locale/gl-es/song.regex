@@ -1,0 +1,1 @@
+(a |)(canción|pista) (?P<track>.+)

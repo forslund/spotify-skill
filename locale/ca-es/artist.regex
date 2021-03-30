@@ -1,0 +1,1 @@
+(l'artista|el grup|la banda|(alguna cosa|qualsevol cosa|quelcom|música|cançons) (de|de la|dels|de les)) (?P<artist>.+)
