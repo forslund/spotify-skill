@@ -177,7 +177,8 @@ class SpotifySkill(CommonPlaySkill):
         self.regexes = {}
         self.last_played_type = None  # The last uri type that was started
         self.is_playing = False
-
+        self.__saved_tracks_fetched = 0
+        
     def translate_regex(self, regex):
         if regex not in self.regexes:
             path = self.find_resource(regex + '.regex')
@@ -831,11 +832,11 @@ class SpotifySkill(CommonPlaySkill):
 
     def refresh_saved_tracks(self):
         """Saved tracks are cached for 4 hours."""
-        return []
         if not self.spotify:
             return []
         now = time.time()
-        if not self.saved_tracks or (now - self.__saved_tracks_fetched > 4 * 60 * 60):
+        if not (self.saved_tracks or
+                (now - self.__saved_tracks_fetched > 4 * 60 * 60)):
             saved_tracks = []
             offset = 0
             while True:
