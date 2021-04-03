@@ -1,10 +1,11 @@
 # <img src='https://rawcdn.githack.com/forslund/spotify-skill/05c19c0fba8a4af150c6eb8cf2e955d59ac83d15/Spotify_Icon.png' card_color='#40db60' width='50' height='50' style='vertical-align:bottom'/> Play Spotify
 
-**Spotify has disabled my API access for the skill, it was violating their Terms of Service by enabling voice control. I must have missed this back in 2017 when I created the skill.**
+Listen to music from your Spotify Premium music account.
 
-To use this skill currently you will need to create your own "application using
-https://developer.spotify.com". See instructions under the heading "Personal access token"
-.
+**Spotify has disabled the API access for the skill, you will need to create your own. Instructions below.**
+
+To use this skill currently you will need to create your own application using [The Spotify developer dashboard](https://developer.spotify.com/dashboard/) due to Spotify policy (see *Spotify Authentication reason* for some details). Detailed instructions are available below under *Personal Access Token*.
+
 Listen to music from your Spotify Premium music account
 
 ## About
@@ -41,12 +42,24 @@ The exception to this is the Mark-1 which is shipped with a spotify player libra
 ### Authorization:
 This Skill uses two different methods of authentication. Both need to be filled in correctly for the **Skill** to function correctly.
 
-#### API connection to your Spotify account
+#### Personal Access Token
+
+##### Creating access token
+From the [Spotify developer dashboard](https://developer.spotify.com/dashboard/)
+
+1. Click "CREATE AN APP"
+1. Fill out the create application form
+1. Click on the new app and choose EDIT SETTINGS
+1. Under Redirect URIs add `https://localhost:8888`
+
+More info can be found [here](https://developer.spotify.com/documentation/general/guides/app-settings/).
+
+##### Connecting spotify skill
 After installing `mycroft-spotify`, from the mycroft-core folder run the auth.py script in the mycroft-spotify folder
 
 ```
-source venv-activate-sh
-python skills/mycroft-spotify/auth.py
+source venv-activate.sh
+python /opt/mycroft/skills/mycroft-spotify.forslund/auth.py
 ```
 
 The script will try to guide you through connecting a developer account to the skill and store the credentials locally.
@@ -97,3 +110,7 @@ The Mycroft devs
 ## Tags
 #spotify
 #music
+
+## Spotify Authentication reason
+
+Spotify disabled my API access for the skill in August 2020, it was violating their Terms of Service by enabling voice control. I must have missed this back in 2017 when I created the skill. With some luck I can convince Spotify that since the skill is totally non-commercial and open source we may have a single API key for the skill.
