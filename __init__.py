@@ -38,7 +38,7 @@ from socket import gethostname
 import spotipy
 from .spotify import (MycroftSpotifyCredentials, SpotifyConnect,
                       get_album_info, get_artist_info, get_song_info,
-                      get_show_info)
+                      get_show_info, load_local_credentials)
 import random
 
 from mycroft.skills.common_play_skill import CommonPlaySkill, CPSMatchLevel
@@ -177,7 +177,8 @@ class SpotifySkill(CommonPlaySkill):
         self.regexes = {}
         self.last_played_type = None  # The last uri type that was started
         self.is_playing = False
-
+        self.__saved_tracks_fetched = 0
+        
     def translate_regex(self, regex):
         if regex not in self.regexes:
             path = self.find_resource(regex + '.regex')
@@ -267,15 +268,34 @@ class SpotifySkill(CommonPlaySkill):
             # mycroft-playback-control.mycroftai:PlayQueryTimeout
             self.refresh_saved_tracks()
 
-    def load_credentials(self):
-        """Retrieve credentials from the backend and connect to Spotify."""
+    def load_local_creds(self):
+        try:
+            creds = load_local_credentials(self.settings['user'])
+            spotify = SpotifyConnect(client_credentials_manager=creds)
+        except Exception:
+            self.log.exception('Couldn\'t fetch credentials')
+            spotify = None
+        return spotify
+
+    def load_remote_creds(self):
         try:
             creds = MycroftSpotifyCredentials(self.OAUTH_ID)
-            self.spotify = SpotifyConnect(client_credentials_manager=creds)
+            spotify = SpotifyConnect(client_credentials_manager=creds)
         except HTTPError:
             self.log.info('Couldn\'t fetch credentials')
-            self.spotify = None
+            spotify = None
+        return spotify
 
+    def load_credentials(self):
+        """Retrieve credentials and connect to spotify.
+
+        This will load local credentials if available otherwise fetching
+        remote settings from mycroft backend will be attempted.
+
+        NOTE: the remote fetching is only a preparation for the future and
+        will always fail at the moment.
+        """
+        self.spotify = self.load_local_creds() or self.load_remote_creds()
         if self.spotify:
             # Spotfy connection worked, prepare for usage
             # TODO: Repeat occasionally on failures?
@@ -815,7 +835,8 @@ class SpotifySkill(CommonPlaySkill):
         if not self.spotify:
             return []
         now = time.time()
-        if not self.saved_tracks or (now - self.__saved_tracks_fetched > 4 * 60 * 60):
+        if not (self.saved_tracks or
+                (now - self.__saved_tracks_fetched > 4 * 60 * 60)):
             saved_tracks = []
             offset = 0
             while True:
@@ -1203,6 +1224,7 @@ class SpotifySkill(CommonPlaySkill):
     @intent_handler(IntentBuilder('').require('Spotify').require('Device'))
     def list_devices(self, message):
         """ List available devices. """
+        self.log.info(self.spotify)
         if self.spotify:
             devices = [d['name'] for d in self.spotify.get_devices()]
             if len(devices) == 1:
