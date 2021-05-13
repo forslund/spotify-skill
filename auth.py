@@ -42,7 +42,8 @@ if not exists(auth_dir):
 
 am = SpotifyOAuth(scope=SCOPE, client_id=CLIENT_ID,
                   client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI,
-                  cache_path=join(auth_dir, 'token'))
+                  cache_path=join(auth_dir, 'token'),
+                  open_browser=False)
 
 token_info = am.validate_token(am.cache_handler.get_cached_token())
 if not token_info:
