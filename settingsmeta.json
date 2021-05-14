@@ -26,11 +26,6 @@
             "type": "label",
             "value": "",
             "label": "Click the Save button, then use the Connect button to authorize with Spotify.<p/>"
-          },
-          {
-            "name": "Spotify",
-            "type": "oauth",
-            "value": 1
           }
         ]
       },
