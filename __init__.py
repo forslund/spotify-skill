@@ -178,7 +178,7 @@ class SpotifySkill(CommonPlaySkill):
         self.last_played_type = None  # The last uri type that was started
         self.is_playing = False
         self.__saved_tracks_fetched = 0
-        
+
     def translate_regex(self, regex):
         if regex not in self.regexes:
             path = self.find_resource(regex + '.regex')
@@ -246,9 +246,7 @@ class SpotifySkill(CommonPlaySkill):
         self.on_websettings_changed()
 
     def on_websettings_changed(self):
-        # Only attempt to load credentials if the username has been set
-        # will limit the accesses to the api.
-        if not self.spotify and self.settings.get('user', None):
+        if not self.spotify:
             try:
                 self.load_credentials()
             except Exception as e:
