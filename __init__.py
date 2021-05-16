@@ -70,6 +70,10 @@ class SpotifyNotAuthorizedError(Exception):
     pass
 
 
+class MissingRegexpError(Exception):
+    pass
+
+
 # Platforms for which the skill should start the spotify player
 MANAGED_PLATFORMS = ['mycroft_mark_1', 'mycroft_mark_2pi']
 # Return value definition indication nothing was found
@@ -180,13 +184,17 @@ class SpotifySkill(CommonPlaySkill):
         self.__saved_tracks_fetched = 0
 
     def translate_regex(self, regex):
-        if regex not in self.regexes:
-            path = self.find_resource(regex + '.regex')
-            if path:
-                with open(path) as f:
-                    string = f.read().strip()
-                self.regexes[regex] = string
-        return self.regexes[regex]
+        try:
+            if regex not in self.regexes:
+                path = self.find_resource(regex + '.regex')
+                if path:
+                    with open(path) as f:
+                        string = f.read().strip()
+                    self.regexes[regex] = string
+            return self.regexes[regex]
+        except KeyError as e:
+            raise MissingRegexError('Missing regex: {}'.format(regex)) \
+                   from e
 
     def launch_librespot(self):
         """Launch the librespot binary for the Mark-1."""
@@ -496,46 +504,84 @@ class SpotifySkill(CommonPlaySkill):
 
         Returns: Tuple with confidence and data or NOTHING_FOUND
         """
-        # Check if saved
-        match = re.match(self.translate_regex('saved_songs'), phrase,
-                         re.IGNORECASE)
-        if match and self.saved_tracks:
-            return (1.0, {'data': None,
-                          'type': 'saved_tracks'})
+        return (self._specific_saved_songs(phrase, bonus) or
+                self._specific_playlist(phrase, bonus) or
+                self._specific_album(phrase, bonus) or
+                self._specific_artist(phrase, bonus) or
+                self._specific_podcast(phrase, bonus) or
+                self._specific_track(phrase, bonus)
+                or NOTHING_FOUND)
 
-        # Check if playlist
-        match = re.match(self.translate_regex('playlist'), phrase,
-                         re.IGNORECASE)
-        if match:
-            return self.query_playlist(match.groupdict()['playlist'])
+    def _specific_saved_songs(self, phrase, bonus):
+        """Check for request for saved track (liked)."""
+        try:
+            match = re.match(self.translate_regex('saved_songs'), phrase,
+                             re.IGNORECASE)
+            if match and self.saved_tracks:
+                return (1.0, {'data': None,
+                              'type': 'saved_tracks'})
+        except MissingRegexpError as e:
+            LOG.error('Could not check for saved songs ({})'.format(repr(e)))
+            return None
 
-        # Check album
-        match = re.match(self.translate_regex('album'), phrase,
-                         re.IGNORECASE)
-        if match:
-            bonus += 0.1
-            album = match.groupdict()['album']
-            return self.query_album(album, bonus)
+    def _specific_playlist(self, phrase, bonus):
+        """Check for request for playlist."""
+        try:
+            match = re.match(self.translate_regex('playlist'), phrase,
+                             re.IGNORECASE)
+            if match:
+                return self.query_playlist(match.groupdict()['playlist'])
+        except MissingRegexpError as e:
+            LOG.error('Could not specifically check for playlists, '
+                      'Missing translation ({})'.format(repr(e)))
+            return None
 
-        # Check artist
-        match = re.match(self.translate_regex('artist'), phrase,
-                         re.IGNORECASE)
-        if match:
-            artist = match.groupdict()['artist']
-            return self.query_artist(artist, bonus)
-        match = re.match(self.translate_regex('song'), phrase,
-                         re.IGNORECASE)
-        if match:
-            song = match.groupdict()['track']
-            return self.query_song(song, bonus)
+    def _specific_album(self, phrase, bonus):
+        """Check request for album."""
+        try:
+            match = re.match(self.translate_regex('album'), phrase,
+                             re.IGNORECASE)
+            if match:
+                bonus += 0.1
+                album = match.groupdict()['album']
+                return self.query_album(album, bonus)
 
-        # Check if podcast
+        except MissingRegexpError as e:
+            LOG.error('Could not specifically check for albums, '
+                      'Missing translation ({})'.format(repr(e)))
+            return None
+
+    def _specific_artist(self, phrase, bonus):
+        """Check request for artist."""
+        try:
+            match = re.match(self.translate_regex('artist'), phrase,
+                             re.IGNORECASE)
+            if match:
+                artist = match.groupdict()['artist']
+                return self.query_artist(artist, bonus)
+            match = re.match(self.translate_regex('song'), phrase,
+                             re.IGNORECASE)
+            if match:
+                song = match.groupdict()['track']
+                return self.query_song(song, bonus)
+        except MissingRegexpError as e:
+            LOG.error('Could not specifically check for artists, '
+                      'Missing translation ({})'.format(repr(e)))
+            return None
+
+    def _specific_podcast(self, phrase, bonus):
+        """Check request for podcast."""
         match = re.match(self.translate_regex('podcast'), phrase,
                          re.IGNORECASE)
         if match:
             return self.query_show(match.groupdict()['podcast'])
 
-        return NOTHING_FOUND
+    def _specific_track(self, phrase, bonus):
+        """Check if request asks for a song."""
+        match = re.match(self.translate_regex('song'), phrase,
+                         re.IGNORECASE)
+        if match:
+            return self.query_song(match.groupdict()['track'])
 
     def generic_query(self, phrase, bonus):
         """Check for a generic query, not asking for any special feature.
