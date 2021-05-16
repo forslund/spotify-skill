@@ -898,7 +898,7 @@ class SpotifySkill(CommonPlaySkill):
                 device_type = DeviceType.DEFAULT
             # if not set or missing try playing on this device
             if not dev:
-                dev = self.device_by_name(self.device_name)
+                dev = self.device_by_name(self.device_name or '')
                 self.is_player_remote = False
                 device_type = DeviceType.MYCROFT
             # if not check if a desktop spotify client is playing
