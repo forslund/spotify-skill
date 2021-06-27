@@ -21,13 +21,8 @@
                         "type": "password",
                         "label": "Password",
                         "value": ""
-                    },
-          {
-            "type": "label",
-            "value": "",
-            "label": "Click the Save button, then use the Connect button to authorize with Spotify.<p/>"
-          }
-        ]
+                    }
+                ]
       },
       {
         "name": "Remote Control Device",
