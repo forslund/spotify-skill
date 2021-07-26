@@ -125,6 +125,7 @@ def update_librespot():
         print('Librespot Update failed, {}'.format(repr(e)))
 
 
+@intent_handler(['WhatSong.intent', 'WhatAlbum.intent', 'WhatArtist.intent'])
 def status_info(status):
     """Return track, artist, album tuple from spotify status.
 
@@ -178,6 +179,7 @@ class SpotifySkill(CommonPlaySkill):
         self.last_played_type = None  # The last uri type that was started
         self.is_playing = False
         self.__saved_tracks_fetched = 0
+        self.allow_master_control = self.settings.get('allow_master_control')
 
     def translate_regex(self, regex):
         if regex not in self.regexes:
@@ -809,9 +811,6 @@ class SpotifySkill(CommonPlaySkill):
         self.enable_intent('StopMusic.intent')
 
     def disable_playing_intents(self):
-        self.disable_intent('WhatSong.intent')
-        self.disable_intent('WhatAlbum.intent')
-        self.disable_intent('WhatArtist.intent')
         self.disable_intent('StopMusic.intent')
 
     @property
@@ -1188,6 +1187,12 @@ class SpotifySkill(CommonPlaySkill):
         if self.spotify and self.dev_id:
             self.log.info('Pausing Spotify...')
             self.spotify.pause(self.dev_id)
+        # if authorized and playback wasn't started by the skill, but user has
+        # set config allowing skill to control playback started elsewhere
+        elif self.spotify and self.allow_master_control:
+            self.dev_id = self.get_default_device()['id']
+            self.log.info('Pausing Spotify on device {}...'.format(self.dev_id))
+            self.spotify.pause(self.dev_id)
 
     def pause(self, message=None):
         """ Handler for playback control pause. """
@@ -1200,11 +1205,36 @@ class SpotifySkill(CommonPlaySkill):
         if self.spotify and self.dev_id:
             self.log.info('Resume Spotify')
             self.spotify_play(self.dev_id)
+        # if authorized, and playback wasn't started by the skill, but user has
+        # set config allowing skill to control playback started elsewhere
+        # Current limitation: if playback is started on another device, paused
+        # through something other than mycroft (e.g. a spotify app), and then
+        # mycroft is asked to resume playback, playback will resume on the
+        # default device, since mycroft won't know which device was playing
+        # previously. A potential solution would be to periodically check
+        # which (if any) devices are playing, and cache that information.
+        elif self.spotify and self.allow_master_control:
+            self.dev_id = self.get_default_device()['id']
+            self.log.info('Resume Spotify on device {}'.format(self.dev_id))
+            self.spotify_play(self.dev_id)
+            # Temporary fix: the resume doesn't always seem to work on the
+            # first attempt
+            time.sleep(3)
+            self.spotify_play(self.dev_id)
 
     def next_track(self, message):
         """ Handler for playback control next. """
         # if authorized and playback was started by the skill
         if self.spotify and self.dev_id:
+            self.log.info('Next Spotify track')
+            self.spotify.next(self.dev_id)
+            self.start_monitor()
+            return True
+        # if authorized, and playback wasn't started by the skill, but user has
+        # set config allowing skill to control playback started elsewhere
+        # Current limitation is the same as the limitation with resume above.
+        elif self.spotify and self.allow_master_control:
+            self.dev_id = self.get_default_device()['id']
             self.log.info('Next Spotify track')
             self.spotify.next(self.dev_id)
             self.start_monitor()
@@ -1215,6 +1245,14 @@ class SpotifySkill(CommonPlaySkill):
         """ Handler for playback control prev. """
         # if authorized and playback was started by the skill
         if self.spotify and self.dev_id:
+            self.log.info('Previous Spotify track')
+            self.spotify.prev(self.dev_id)
+            self.start_monitor()
+        # if authorized, and playback wasn't started by the skill, but user has
+        # set config allowing skill to control playback started elsewhere
+        # Current limitation is the same as the limitation with resume above.
+        elif self.spotify and self.allow_master_control:
+            self.dev_id = self.get_default_device()['id']
             self.log.info('Previous Spotify track')
             self.spotify.prev(self.dev_id)
             self.start_monitor()
@@ -1246,6 +1284,10 @@ class SpotifySkill(CommonPlaySkill):
             if dev:
                 self.log.info('Transfering playback to {}'.format(dev['name']))
                 self.spotify.transfer_playback(dev['id'])
+                # If mycroft is allowed to control playback started elsewhere,
+                # update dev_id when playback is transferred between devices
+                if self.allow_master_control:
+                    self.dev_id = dev['id']
             else:
                 self.speak_dialog('DeviceNotFound',
                                   {'name': message.data['ToDevice']})
@@ -1277,6 +1319,10 @@ class SpotifySkill(CommonPlaySkill):
         if self.spotify and self.is_playing:
             if self.dev_id:
                 self.schedule_event(self.do_stop, 0, name='StopSpotify')
+            return True
+        elif self.spotify and self.allow_master_control:
+            self.dev_id = self.get_default_device()['id']
+            self.schedule_event(self.do_stop, 0, name='StopSpotify')
             return True
         else:
             return False
