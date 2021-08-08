@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import os
 from os import mkdir
 from os.path import exists, join
 
@@ -19,7 +20,8 @@ import spotipy
 from spotipy import SpotifyOAuth
 from xdg import BaseDirectory
 
-AUTH_DIR = BaseDirectory.save_config_path('spotipy')
+AUTH_DIR = os.environ.get('SPOTIFY_SKILL_CREDS_DIR',
+                          BaseDirectory.save_config_path('spotipy'))
 SCOPE = ('user-library-read streaming playlist-read-private user-top-read '
          'user-read-playback-state')
 
