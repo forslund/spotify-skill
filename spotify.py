@@ -6,10 +6,11 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth
 from requests import HTTPError
 import time
-from xdg import BaseDirectory
 
 from mycroft.api import DeviceApi
 from mycroft.util.log import LOG
+
+from .auth import AUTH_DIR, SCOPE
 
 
 def get_token(dev_cred):
@@ -64,14 +65,10 @@ def refresh_auth(func):
 
 
 def load_local_credentials(user):
-    scope = ('user-library-read streaming playlist-read-private '
-             'user-top-read user-read-playback-state')
-    auth_dir = BaseDirectory.save_config_path('spotipy')
+    if not exists(AUTH_DIR):
+        os.mkdir(AUTH_DIR)
 
-    if not exists(auth_dir):
-        os.mkdir(auth_dir)
-
-    token_cache = join(auth_dir, 'token')
+    token_cache = join(AUTH_DIR, 'token')
 
     # Move old creds to config path
     old_cache_file = '.cache-{}'.format(user)
@@ -79,7 +76,7 @@ def load_local_credentials(user):
         move(old_cache_file, token_cache)
 
     # Load stored oauth credentials if exists
-    auth_cache = join(auth_dir, 'auth')
+    auth_cache = join(AUTH_DIR, 'auth')
     if exists(auth_cache):
         with open(auth_cache) as f:
             auth = json.load(f)
@@ -88,7 +85,7 @@ def load_local_credentials(user):
 
     return SpotifyOAuth(username=user,
                         redirect_uri='https://localhost:8888',
-                        scope=scope,
+                        scope=SCOPE,
                         cache_path=token_cache)
 
 
