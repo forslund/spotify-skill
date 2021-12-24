@@ -811,7 +811,13 @@ class SpotifySkill(CommonPlaySkill):
         self.enable_intent('StopMusic.intent')
 
     def disable_playing_intents(self):
-        self.disable_intent('StopMusic.intent')
+        # If allow_master_control is false, disable these intents (called
+        # when music stops playing)
+        if not self.allow_master_control:
+            self.disable_intent('WhatSong.intent')
+            self.disable_intent('WhatAlbum.intent')
+            self.disable_intent('WhatArtist.intent')
+            self.disable_intent('StopMusic.intent')
 
     @property
     def playlists(self):
@@ -1163,24 +1169,33 @@ class SpotifySkill(CommonPlaySkill):
     def song_info(self, message):
         """ Speak song info. """
         status = self.spotify.status() if self.spotify else None
-        song, artist, _ = status_info(status)
-        self.speak_dialog('CurrentSong', {'song': song, 'artist': artist})
+        if self.is_playing:
+            song, artist, _ = status_info(status)
+            self.speak_dialog('CurrentSong', {'song': song, 'artist': artist})
+        else:
+            self.speak_dialog('NothingPlaying')
 
     def album_info(self, message):
         """ Speak album info. """
         status = self.spotify.status() if self.spotify else None
-        _, _, album = status_info(status)
-        if self.last_played_type == 'album':
-            self.speak_dialog('CurrentAlbum', {'album': album})
+        if self.is_playing:
+            _, _, album = status_info(status)
+            if self.last_played_type == 'album':
+                self.speak_dialog('CurrentAlbum', {'album': album})
+            else:
+                self.speak_dialog('OnAlbum', {'album': album})
         else:
-            self.speak_dialog('OnAlbum', {'album': album})
+            self.speak_dialog('NothingPlaying')
 
     def artist_info(self, message):
         """ Speak artist info. """
         status = self.spotify.status() if self.spotify else None
         if status:
-            _, artist, _ = status_info(status)
-            self.speak_dialog('CurrentArtist', {'artist': artist})
+            if self.is_playing:
+                _, artist, _ = status_info(status)
+                self.speak_dialog('CurrentArtist', {'artist': artist})
+            else:
+                self.speak_dialog('NothingPlaying')
 
     def __pause(self):
         # if authorized and playback was started by the skill
@@ -1204,6 +1219,8 @@ class SpotifySkill(CommonPlaySkill):
         # if authorized and playback was started by the skill
         if self.spotify and self.dev_id:
             self.log.info('Resume Spotify')
+            # Re-enable intents (which may have been disabled when music stopped)
+            self.enable_playing_intents()
             self.spotify_play(self.dev_id)
         # if authorized, and playback wasn't started by the skill, but user has
         # set config allowing skill to control playback started elsewhere
