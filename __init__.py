@@ -125,7 +125,6 @@ def update_librespot():
         print('Librespot Update failed, {}'.format(repr(e)))
 
 
-@intent_handler(['WhatSong.intent', 'WhatAlbum.intent', 'WhatArtist.intent'])
 def status_info(status):
     """Return track, artist, album tuple from spotify status.
 
@@ -382,12 +381,14 @@ class SpotifySkill(CommonPlaySkill):
         # Checks once a second for feedback
         status = self.spotify.status() if self.spotify else {}
         self.is_playing = self.spotify.is_playing()
+        self.log.info(self.is_playing)
 
         if not status or not status.get('is_playing'):
             self.stop_monitor()
             self.mouth_text = None
             self.enclosure.mouth_reset()
-            self.disable_playing_intents()
+            if not self.allow_master_control:
+                self.disable_playing_intents()
             return
 
         # Get the current track info
@@ -802,7 +803,8 @@ class SpotifySkill(CommonPlaySkill):
         self.register_intent_file('WhatArtist.intent', self.artist_info)
         self.register_intent_file('StopMusic.intent', self.handle_stop)
         time.sleep(0.5)
-        self.disable_playing_intents()
+        if not self.allow_master_control:
+            self.disable_playing_intents()
 
     def enable_playing_intents(self):
         self.enable_intent('WhatSong.intent')
@@ -813,11 +815,10 @@ class SpotifySkill(CommonPlaySkill):
     def disable_playing_intents(self):
         # If allow_master_control is false, disable these intents (called
         # when music stops playing)
-        if not self.allow_master_control:
-            self.disable_intent('WhatSong.intent')
-            self.disable_intent('WhatAlbum.intent')
-            self.disable_intent('WhatArtist.intent')
-            self.disable_intent('StopMusic.intent')
+        self.disable_intent('WhatSong.intent')
+        self.disable_intent('WhatAlbum.intent')
+        self.disable_intent('WhatArtist.intent')
+        self.disable_intent('StopMusic.intent')
 
     @property
     def playlists(self):
