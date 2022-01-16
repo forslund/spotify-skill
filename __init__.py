@@ -812,8 +812,6 @@ class SpotifySkill(CommonPlaySkill):
         self.enable_intent('StopMusic.intent')
 
     def disable_playing_intents(self):
-        # If allow_master_control is false, disable these intents (called
-        # when music stops playing)
         self.disable_intent('WhatSong.intent')
         self.disable_intent('WhatAlbum.intent')
         self.disable_intent('WhatArtist.intent')
