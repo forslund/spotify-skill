@@ -381,7 +381,6 @@ class SpotifySkill(CommonPlaySkill):
         # Checks once a second for feedback
         status = self.spotify.status() if self.spotify else {}
         self.is_playing = self.spotify.is_playing()
-        self.log.info(self.is_playing)
 
         if not status or not status.get('is_playing'):
             self.stop_monitor()
