@@ -56,6 +56,14 @@ More info can be found [here](https://developer.spotify.com/documentation/genera
 
 The config will by default be stored in the `XDG_CONFIG` directory, which is often `~/.config`, so by default the generated files are found in `~/.config/spotipy/`. If you wish to use another directory you can set the environment variable `SPOTIFY_SKILL_CREDS_DIR` to the directory where you'd like to store the config. This is useful when running in docker for example.
 
+#### Install the beta version
+
+Install the most recent version of this skill by telling mycroft:
+
+```
+"install the beta version of the spotify skill"
+```
+
 ##### Connecting spotify skill
 **General Setup**
 
