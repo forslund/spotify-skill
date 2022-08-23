@@ -21,18 +21,32 @@ This skill works with the Spotify Connect protocol to interact with Spotify devi
 
 For Picroft users, [raspotify](https://github.com/dtcooper/raspotify) is a good choice.
 
-Install it and then make changes to `/etc/default/raspotify` as follows
+Install it and then make changes to `/etc/raspotify/conf` as follows
 
-- It is recommended to set the DEVICE_NAME to the name of the Mycroft unit (as registered at home.mycroft.ai) for automatic identification:
+- It is recommended to set the LIBRESPOT_NAME to the name of the Mycroft unit (as registered at home.mycroft.ai) for automatic identification:
 
-`DEVICE_NAME="<My Mycroft Unit>"
+```
+# Device name.
+# Raspotify defaults to "raspotify (*hostname)".
+# Librespot defaults to "Librespot".
+LIBRESPOT_NAME="<My Mycroft Unit>"
+```
 
-- set your Spotify username and password under `OPTIONS`
+- You can set your Spotify username and password under `LIBRESPOT_USERNAME` and `LIBRESPOT_PASSWORD`
 
-`OPTIONS="--username <My Username> --password <My Password>"`
+***NOTE: It is no longer necessary to add your Spotify credentials to raspotify/librespot unless you want to control raspotify from a different network***
+
+```
+# Username used to sign in with.
+# Credentials are not required if LIBRESPOT_DISABLE_DISCOVERY is not set.
+LIBRESPOT_USERNAME="<My Username>"
+
+# Password used to sign in with.
+LIBRESPOT_PASSWORD="<My password>"
+```
 
 
-You make sound work with raspotify you may need to edit `/lib/systemd/system/raspotify.service` and there change `User` and `Group` from `raspotify`to `pi`.
+To make sound work with raspotify you may need to edit `/lib/systemd/system/raspotify.service` and there change `User` and `Group` from `raspotify`to `pi`.
 
 
 For desktop users the official spotify player works well.
