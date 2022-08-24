@@ -66,7 +66,7 @@ From the [Spotify developer dashboard](https://developer.spotify.com/dashboard/)
 1. Click on the new app and choose EDIT SETTINGS
 1. Under Redirect URIs add `https://localhost:8888`
 
-More info can be found [here](https://developer.spotify.com/documentation/general/guides/app-settings/).
+More info can be found [here](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/).
 
 The config will by default be stored in the `XDG_CONFIG` directory, which is often `~/.config`, so by default the generated files are found in `~/.config/spotipy/`. If you wish to use another directory you can set the environment variable `SPOTIFY_SKILL_CREDS_DIR` to the directory where you'd like to store the config. This is useful when running in docker for example.
 
