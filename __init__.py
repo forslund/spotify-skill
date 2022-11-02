@@ -836,7 +836,7 @@ class SpotifySkill(CommonPlaySkill):
         if not self.spotify:
             return []
         now = time.time()
-        if not (self.saved_tracks or
+        if (not self.saved_tracks or
                 (now - self.__saved_tracks_fetched > 4 * 60 * 60)):
             saved_tracks = []
             offset = 0
