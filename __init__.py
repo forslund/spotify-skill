@@ -21,29 +21,35 @@ Otherwise it begins playing the music locally using the Mycroft-controlled
 hardware.  (Which, depending on the audio setup, might not be the main
 speaker on the equipment.)
 """
+import random
 import re
+import signal
+import time
+
+from enum import Enum
+from os.path import abspath, dirname, join
+from subprocess import call, Popen, DEVNULL
+from socket import gethostname
+
+import spotipy
+
 from mycroft.skills.core import intent_handler
 from mycroft.util.parse import match_one, fuzzy_match
 from mycroft.api import DeviceApi
 from mycroft.messagebus import Message
-from requests import HTTPError
+
 from adapt.intent import IntentBuilder
+from requests import HTTPError
 
-import time
-from os.path import abspath, dirname, join
-from subprocess import call, Popen, DEVNULL
-import signal
-from socket import gethostname
+from .exceptions import (NoSpotifyDevicesError,
+                         PlaylistNotFoundError,
+                         SpotifyNotAuthorizedError)
 
-import spotipy
 from .spotify import (MycroftSpotifyCredentials, SpotifyConnect,
                       get_album_info, get_artist_info, get_song_info,
                       get_show_info, load_local_credentials)
-import random
 
 from mycroft.skills.common_play_skill import CommonPlaySkill, CPSMatchLevel
-
-from enum import Enum
 
 
 class DeviceType(Enum):
@@ -52,22 +58,6 @@ class DeviceType(Enum):
     DESKTOP = 3
     FIRSTBEST = 4
     NOTFOUND = 5
-
-
-class SpotifyPlaybackError(Exception):
-    pass
-
-
-class NoSpotifyDevicesError(Exception):
-    pass
-
-
-class PlaylistNotFoundError(Exception):
-    pass
-
-
-class SpotifyNotAuthorizedError(Exception):
-    pass
 
 
 # Platforms for which the skill should start the spotify player
