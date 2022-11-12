@@ -882,9 +882,10 @@ class SpotifySkill(CommonPlaySkill):
             if self.allow_master_control:
                 current_playback = self.spotify.current_playback()
                 if current_playback:
-                    self.log.debug('using device {} as default, device id: '
-                                   '{}'.format(current_playback['device']['name'],
-                                               current_playback['device']['id']))
+                    device_name = current_playback['device']['name']
+                    device_id = current_playback['device']['id']
+                    self.log.debug(f'using device {device_name} as default, '
+                                   f'device id: {device_id}')
                     return current_playback['device']
 
             # When there is an active Spotify device somewhere, use it
@@ -1222,7 +1223,7 @@ class SpotifySkill(CommonPlaySkill):
         # if authorized and playback was started by the skill (or
         # allow_master_control config has been set)
         if self.spotify and self.dev_id:
-            self.log.info('Pausing Spotify on device {}...'.format(self.dev_id))
+            self.log.info(f'Pausing Spotify on device {self.dev_id}...')
             self.spotify.pause(self.dev_id)
 
     def pause(self, message=None):
@@ -1241,7 +1242,7 @@ class SpotifySkill(CommonPlaySkill):
         # if authorized and playback was started by the skill (or
         # allow_master_control config has been set)
         if self.spotify and self.dev_id:
-            # Re-enable intents (that may have been disabled when music stopped)
+            # Re-enable intents that may have been disabled when music stopped
             self.enable_playing_intents()
             self.spotify_play(self.dev_id)
 

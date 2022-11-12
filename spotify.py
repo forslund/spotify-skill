@@ -139,7 +139,7 @@ class SpotifyConnect(spotipy.Spotify):
             # Verify it is playing on the given device
             dev = self.get_device(device)
             return dev and dev['is_active']
-        except:
+        except Exception:
             # Technically a 204 return from status() request means 'no track'
             return False  # assume not playing
 
@@ -296,6 +296,3 @@ def get_song_info(data):
     return (data['tracks']['items'][0]['name'],
             [a['name'] for a in data['tracks']['items'][0]['artists']],
             data['tracks']['items'][0]['uri'])
-
-
-
