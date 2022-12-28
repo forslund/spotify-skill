@@ -52,11 +52,14 @@ class MycroftSpotifyCredentials(SpotifyClientCredentials):
 
 
 def refresh_auth(func):
+    """This refresh is only for the old Mycroft OAuth2 auth backend."""
     def wrapper(self, *args, **kwargs):
         try:
             return func(self, *args, **kwargs)
         except HTTPError as e:
-            if e.response.status_code == 401:
+            if (e.response.status_code == 401 and
+                    isinstance(self.credentials_manager,
+                               MycroftSpotifyCredentials)):
                 self.client_credentials_manager.get_access_token(force=True)
                 return func(self, *args, **kwargs)
             else:
