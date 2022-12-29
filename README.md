@@ -21,18 +21,32 @@ This skill works with the Spotify Connect protocol to interact with Spotify devi
 
 For Picroft users, [raspotify](https://github.com/dtcooper/raspotify) is a good choice.
 
-Install it and then make changes to `/etc/default/raspotify` as follows
+Install it and then make changes to `/etc/raspotify/conf` as follows
 
-- It is recommended to set the DEVICE_NAME to the name of the Mycroft unit (as registered at home.mycroft.ai) for automatic identification:
+- It is recommended to set the LIBRESPOT_NAME to the name of the Mycroft unit (as registered at home.mycroft.ai) for automatic identification:
 
-`DEVICE_NAME="<My Mycroft Unit>"
+```
+# Device name.
+# Raspotify defaults to "raspotify (*hostname)".
+# Librespot defaults to "Librespot".
+LIBRESPOT_NAME="<My Mycroft Unit>"
+```
 
-- set your Spotify username and password under `OPTIONS`
+- You can set your Spotify username and password under `LIBRESPOT_USERNAME` and `LIBRESPOT_PASSWORD`
 
-`OPTIONS="--username <My Username> --password <My Password>"`
+***NOTE: It is no longer necessary to add your Spotify credentials to raspotify/librespot unless you want to control raspotify from a different network***
+
+```
+# Username used to sign in with.
+# Credentials are not required if LIBRESPOT_DISABLE_DISCOVERY is not set.
+LIBRESPOT_USERNAME="<My Username>"
+
+# Password used to sign in with.
+LIBRESPOT_PASSWORD="<My password>"
+```
 
 
-You make sound work with raspotify you may need to edit `/lib/systemd/system/raspotify.service` and there change `User` and `Group` from `raspotify`to `pi`.
+To make sound work with raspotify you may need to edit `/lib/systemd/system/raspotify.service` and there change `User` and `Group` from `raspotify`to `pi`.
 
 
 For desktop users the official spotify player works well.
@@ -52,7 +66,7 @@ From the [Spotify developer dashboard](https://developer.spotify.com/dashboard/)
 1. Click on the new app and choose EDIT SETTINGS
 1. Under Redirect URIs add `https://localhost:8888`
 
-More info can be found [here](https://developer.spotify.com/documentation/general/guides/app-settings/).
+More info can be found [here](https://developer.spotify.com/documentation/general/guides/authorization/app-settings/).
 
 The config will by default be stored in the `XDG_CONFIG` directory, which is often `~/.config`, so by default the generated files are found in `~/.config/spotipy/`. If you wish to use another directory you can set the environment variable `SPOTIFY_SKILL_CREDS_DIR` to the directory where you'd like to store the config. This is useful when running in docker for example.
 
