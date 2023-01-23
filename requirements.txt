@@ -1,1 +1,1 @@
-spotipy==2.17.1
+spotipy==2.22.1
